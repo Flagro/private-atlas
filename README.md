@@ -1,4 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Private Atlas
+
+A personal travel tracker for logging places you've visited (countries and cities).
+
+## Development Setup
+
+### 1. Database (PostgreSQL)
+
+Copy the example env file and start PostgreSQL with Docker:
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+Then run migrations:
+
+```bash
+npm run db:migrate
+```
+
+### 2. Run the app
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Useful commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run db:generate` | Regenerate Prisma client |
+| `npm run db:migrate` | Apply migrations |
+| `npm run db:studio` | Open Prisma Studio (DB GUI) |
+| `npm run db:push` | Push schema changes (dev only) |
 
 ## Getting Started
 

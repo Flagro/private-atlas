@@ -1,0 +1,67 @@
+// Private Atlas - Places Visited Tracker
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  visits Visit[]
+
+  @@map("users")
+}
+
+model Country {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique // ISO 3166-1 alpha-2 (e.g. US, FR)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cities City[]
+  visits Visit[]
+
+  @@map("countries")
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String
+  countryId String   @map("country_id")
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  visits  Visit[]
+
+  @@map("cities")
+}
+
+model Visit {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  countryId String?  @map("country_id")
+  cityId    String?  @map("city_id")
+  visitedAt DateTime @map("visited_at")
+  notes    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country Country? @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  city    City?    @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@map("visits")
+}
