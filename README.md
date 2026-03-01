@@ -6,10 +6,16 @@ A personal travel tracker for logging places you've visited (countries and citie
 
 ### 1. Database (PostgreSQL)
 
-Copy the example env file and start PostgreSQL with Docker:
+Copy the example env file and configure:
 
 ```bash
 cp .env.example .env
+# Generate AUTH_SECRET: npx auth secret
+```
+
+Start PostgreSQL with Docker:
+
+```bash
 docker compose up -d
 ```
 
