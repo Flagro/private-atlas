@@ -1,7 +1,22 @@
-/**
- * Utility for merging class names (e.g. for Tailwind).
- * Add clsx + tailwind-merge later for full support.
- */
 export function cn(...classes: (string | undefined | false)[]): string {
   return classes.filter(Boolean).join(" ");
+}
+
+export function countryCodeToFlag(code: string): string {
+  return [...code.toUpperCase()]
+    .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+    .join("");
+}
+
+export function formatVisitDate(isoString: string): string {
+  return new Date(isoString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+export function todayAsDateString(): string {
+  return new Date().toISOString().slice(0, 10);
 }

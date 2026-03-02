@@ -46,6 +46,7 @@ model City {
   country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
   visits  Visit[]
 
+  @@unique([name, countryId])
   @@map("cities")
 }
 

@@ -1,0 +1,26 @@
+import { z } from "zod";
+
+const dateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD format");
+
+export const createVisitSchema = z
+  .object({
+    countryId: z.string().min(1).optional(),
+    cityId: z.string().min(1).optional(),
+    visitedAt: dateString,
+    notes: z.string().max(1000).optional(),
+  })
+  .refine((data) => data.countryId || data.cityId, {
+    message: "At least a country or city must be selected",
+  });
+
+export const updateVisitSchema = z.object({
+  countryId: z.string().min(1).nullable().optional(),
+  cityId: z.string().min(1).nullable().optional(),
+  visitedAt: dateString.optional(),
+  notes: z.string().max(1000).nullable().optional(),
+});
+
+export type CreateVisitInput = z.infer<typeof createVisitSchema>;
+export type UpdateVisitInput = z.infer<typeof updateVisitSchema>;

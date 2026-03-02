@@ -33,14 +33,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+Then seed the database with countries and cities:
+
+```bash
+npm run db:seed
+```
+
 ### Useful commands
 
 | Command | Description |
 |---------|-------------|
 | `npm run db:generate` | Regenerate Prisma client |
-| `npm run db:migrate` | Apply migrations |
+| `npm run db:migrate` | Create and apply migrations (dev) |
+| `npm run db:migrate:deploy` | Apply pending migrations (production) |
+| `npm run db:seed` | Seed countries and major cities |
 | `npm run db:studio` | Open Prisma Studio (DB GUI) |
-| `npm run db:push` | Push schema changes (dev only) |
+| `npm run db:push` | Push schema changes without migration (dev only) |
 
 ## Getting Started
 
