@@ -32,13 +32,22 @@ export function AddVisitDialog({
       setCityId("");
       return;
     }
+
+    const controller = new AbortController();
     setLoadingCities(true);
     setCityId("");
-    fetch(`/api/places/cities?countryId=${countryId}`)
+
+    fetch(`/api/places/cities?countryId=${countryId}`, {
+      signal: controller.signal,
+    })
       .then((r) => r.json())
       .then((data: CityOption[]) => setCities(data))
-      .catch(() => setCities([]))
+      .catch((e) => {
+        if (e.name !== "AbortError") setCities([]);
+      })
       .finally(() => setLoadingCities(false));
+
+    return () => controller.abort();
   }, [countryId]);
 
   function reset() {
@@ -137,10 +146,14 @@ export function AddVisitDialog({
           )}
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="visit-country"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
               Country
             </label>
             <select
+              id="visit-country"
               value={countryId}
               onChange={(e) => setCountryId(e.target.value)}
               className={inputClass}
@@ -155,11 +168,15 @@ export function AddVisitDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="visit-city"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
               City{" "}
               <span className="font-normal text-zinc-400">(optional)</span>
             </label>
             <select
+              id="visit-city"
               value={cityId}
               onChange={(e) => setCityId(e.target.value)}
               disabled={!countryId || loadingCities}
@@ -183,10 +200,14 @@ export function AddVisitDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="visit-date"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
               Date visited
             </label>
             <input
+              id="visit-date"
               type="date"
               required
               value={visitedAt}
@@ -197,11 +218,15 @@ export function AddVisitDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="visit-notes"
+              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
               Notes{" "}
               <span className="font-normal text-zinc-400">(optional)</span>
             </label>
             <textarea
+              id="visit-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               maxLength={1000}

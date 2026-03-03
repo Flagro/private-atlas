@@ -28,8 +28,15 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
     visits.some((v) => v.countryId === c.id)
   );
 
-  const filtered = filterCountryId
-    ? visits.filter((v) => v.countryId === filterCountryId)
+  // If the selected filter country no longer has any visits (e.g. last one was
+  // deleted), treat it as "all" so the list doesn't get stuck in an empty state.
+  const effectiveFilterId =
+    filterCountryId && visitedCountries.some((c) => c.id === filterCountryId)
+      ? filterCountryId
+      : "";
+
+  const filtered = effectiveFilterId
+    ? visits.filter((v) => v.countryId === effectiveFilterId)
     : visits;
 
   function handleAdd(visit: VisitWithRelations) {
@@ -68,7 +75,7 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
           </label>
           <select
             id="country-filter"
-            value={filterCountryId}
+            value={effectiveFilterId}
             onChange={(e) => setFilterCountryId(e.target.value)}
             className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
           >
