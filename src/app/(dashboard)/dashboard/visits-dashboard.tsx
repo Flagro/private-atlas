@@ -14,7 +14,7 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
   const [visits, setVisits] = useState<VisitWithRelations[]>(initialVisits);
   const [filterCountryId, setFilterCountryId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const countriesVisited = new Set(
@@ -44,10 +44,14 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
   }
 
   async function handleDelete(id: string) {
-    setDeletingId(id);
+    setDeletingIds((prev) => new Set([...prev, id]));
     setDeleteError(null);
     const res = await fetch(`/api/visits/${id}`, { method: "DELETE" });
-    setDeletingId(null);
+    setDeletingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     if (!res.ok) {
       setDeleteError("Failed to delete visit. Please try again.");
       return;
@@ -119,7 +123,7 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
               key={visit.id}
               visit={visit}
               onDelete={handleDelete}
-              deleting={deletingId === visit.id}
+              deleting={deletingIds.has(visit.id)}
             />
           ))
         )}
