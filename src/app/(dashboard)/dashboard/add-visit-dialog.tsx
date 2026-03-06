@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import type { CityOption, CountryOption, VisitWithRelations } from "@/types";
 import { todayAsDateString } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 interface AddVisitDialogProps {
   isOpen: boolean;
@@ -114,9 +119,6 @@ export function AddVisitDialog({
 
   if (!isOpen) return null;
 
-  const inputClass =
-    "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50";
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -129,7 +131,8 @@ export function AddVisitDialog({
           </h2>
           <button
             onClick={handleClose}
-            className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            aria-label="Close"
+            className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
           >
             ✕
           </button>
@@ -146,17 +149,11 @@ export function AddVisitDialog({
           )}
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="visit-country"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Country
-            </label>
-            <select
+            <Label htmlFor="visit-country">Country</Label>
+            <Select
               id="visit-country"
               value={countryId}
               onChange={(e) => setCountryId(e.target.value)}
-              className={inputClass}
             >
               <option value="">Select a country…</option>
               {countries.map((c) => (
@@ -164,23 +161,19 @@ export function AddVisitDialog({
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="visit-city"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
+            <Label htmlFor="visit-city">
               City{" "}
               <span className="font-normal text-zinc-400">(optional)</span>
-            </label>
-            <select
+            </Label>
+            <Select
               id="visit-city"
               value={cityId}
               onChange={(e) => setCityId(e.target.value)}
               disabled={!countryId || loadingCities}
-              className={inputClass}
             >
               <option value="">
                 {!countryId
@@ -196,61 +189,43 @@ export function AddVisitDialog({
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="visit-date"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Date visited
-            </label>
-            <input
+            <Label htmlFor="visit-date">Date visited</Label>
+            <Input
               id="visit-date"
               type="date"
               required
               value={visitedAt}
               max={todayAsDateString()}
               onChange={(e) => setVisitedAt(e.target.value)}
-              className={inputClass}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="visit-notes"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
+            <Label htmlFor="visit-notes">
               Notes{" "}
               <span className="font-normal text-zinc-400">(optional)</span>
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id="visit-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               maxLength={1000}
               rows={3}
               placeholder="Any memories or highlights…"
-              className={`${inputClass} resize-none`}
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-1">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800"
-            >
+            <Button type="button" variant="secondary" onClick={handleClose}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              {submitting ? "Saving…" : "Save visit"}
-            </button>
+            </Button>
+            <Button type="submit" loading={submitting}>
+              Save visit
+            </Button>
           </div>
         </form>
       </div>

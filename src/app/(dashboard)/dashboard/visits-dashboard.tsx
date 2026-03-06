@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { CountryOption, VisitWithRelations } from "@/types";
 import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
 import { AddVisitDialog } from "./add-visit-dialog";
+import { useToast } from "@/components/providers/toast-provider";
+import { Button } from "@/components/ui/button";
 
 interface VisitsDashboardProps {
   initialVisits: VisitWithRelations[];
@@ -15,7 +17,7 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
   const [filterCountryId, setFilterCountryId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const countriesVisited = new Set(
     visits.filter((v) => v.countryId).map((v) => v.countryId)
@@ -41,11 +43,11 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
 
   function handleAdd(visit: VisitWithRelations) {
     setVisits((prev) => [visit, ...prev]);
+    toast("Visit added!", "success");
   }
 
   async function handleDelete(id: string) {
     setDeletingIds((prev) => new Set([...prev, id]));
-    setDeleteError(null);
     const res = await fetch(`/api/visits/${id}`, { method: "DELETE" });
     setDeletingIds((prev) => {
       const next = new Set(prev);
@@ -53,7 +55,7 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
       return next;
     });
     if (!res.ok) {
-      setDeleteError("Failed to delete visit. Please try again.");
+      toast("Failed to delete visit. Please try again.", "error");
       return;
     }
     setVisits((prev) => prev.filter((v) => v.id !== id));
@@ -92,23 +94,8 @@ export function VisitsDashboard({ initialVisits, countries }: VisitsDashboardPro
           </select>
         </div>
 
-        <button
-          onClick={() => setDialogOpen(true)}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          + Add Visit
-        </button>
+        <Button onClick={() => setDialogOpen(true)}>+ Add Visit</Button>
       </div>
-
-      {/* Error */}
-      {deleteError && (
-        <div
-          role="alert"
-          className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400"
-        >
-          {deleteError}
-        </div>
-      )}
 
       {/* Visits list */}
       <div className="mt-4 space-y-3">
