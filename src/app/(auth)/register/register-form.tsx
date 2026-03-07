@@ -7,10 +7,12 @@ import { registerSchema } from "@/lib/validations/auth";
 export function RegisterForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setIsSubmitting(true);
 
     const form = e.currentTarget;
     const formData = new FormData(form);
@@ -36,6 +38,7 @@ export function RegisterForm() {
     });
 
     const data = await res.json().catch(() => ({}));
+    setIsSubmitting(false);
 
     if (!res.ok) {
       setError(data.error ?? "Something went wrong");
@@ -112,9 +115,13 @@ export function RegisterForm() {
 
       <button
         type="submit"
-        className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        disabled={isSubmitting}
+        className="flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
-        Create account
+        {isSubmitting && (
+          <span className="mr-2 block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        )}
+        {isSubmitting ? "Creating account…" : "Create account"}
       </button>
     </form>
   );
