@@ -1,4 +1,5 @@
 import { signIn } from "@/auth";
+import { LoginSubmitButton } from "./submit-button";
 
 interface LoginFormProps {
   showRegisteredMessage?: boolean;
@@ -75,12 +76,7 @@ export function LoginForm({
         />
       </div>
 
-      <button
-        type="submit"
-        className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
-        Sign in
-      </button>
+      <LoginSubmitButton />
     </form>
   );
 }
