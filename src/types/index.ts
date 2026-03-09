@@ -21,5 +21,5 @@ export type VisitWithRelations = {
   createdAt: string;
   updatedAt: string;
   country: { id: string; name: string; code: string } | null;
-  city: { id: string; name: string } | null;
+  city: { id: string; name: string; lat: number | null; lng: number | null } | null;
 };
