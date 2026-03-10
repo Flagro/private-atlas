@@ -5,7 +5,7 @@ import type { CreateVisitInput, UpdateVisitInput } from "@/lib/validations/visit
 
 const visitRelations = {
   country: { select: { id: true, name: true, code: true } },
-  city: { select: { id: true, name: true } },
+  city: { select: { id: true, name: true, lat: true, lng: true } },
 } as const;
 
 export async function getVisitsWithRelations(userId: string, countryId?: string) {
