@@ -12,6 +12,7 @@ interface DashboardShellProps {
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", Icon: HomeIcon },
+  { href: "/dashboard/map", label: "Map", Icon: MapIcon },
 ] as const;
 
 export function DashboardShell({ user, children }: DashboardShellProps) {
@@ -19,6 +20,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
   const displayName = user.name ?? user.email;
 
   function isActive(href: string) {
+    if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(href + "/");
   }
 
@@ -135,6 +137,27 @@ function HomeIcon() {
     >
       <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
+function MapIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+      <line x1="9" y1="3" x2="9" y2="18" />
+      <line x1="15" y1="6" x2="15" y2="21" />
     </svg>
   );
 }
