@@ -19,6 +19,30 @@ export async function getCountriesWithVisitStatus(userId: string) {
   return countries.map((c) => ({ ...c, visited: visitedSet.has(c.id) }));
 }
 
+export async function getCountryStats(userId: string) {
+  const visits = await prisma.visit.findMany({
+    where: { userId, countryId: { not: null } },
+    select: { countryId: true, visitedAt: true, country: { select: { code: true } } },
+    orderBy: { visitedAt: "desc" },
+  });
+
+  const statsMap = new Map<string, { visitCount: number; lastVisited: Date }>();
+  for (const v of visits) {
+    const code = v.country?.code;
+    if (!code) continue;
+    if (!statsMap.has(code)) {
+      statsMap.set(code, { visitCount: 0, lastVisited: v.visitedAt });
+    }
+    statsMap.get(code)!.visitCount += 1;
+  }
+
+  return Array.from(statsMap.entries()).map(([code, s]) => ({
+    code,
+    visitCount: s.visitCount,
+    lastVisited: s.lastVisited.toISOString(),
+  }));
+}
+
 export async function getCitiesByCountry(countryId?: string) {
   return prisma.city.findMany({
     where: countryId ? { countryId } : undefined,
