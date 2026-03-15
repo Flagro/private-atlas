@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { MouseEvent } from "react";
 import {
   ComposableMap,
@@ -53,7 +53,10 @@ export function WorldMap({
 }: WorldMapProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-  const statsMap = new Map(countryStats.map((s) => [s.code, s]));
+  const statsMap = useMemo(
+    () => new Map(countryStats.map((s) => [s.code, s])),
+    [countryStats]
+  );
 
   const handleMouseEnter = useCallback(
     (event: MouseEvent, content: string) => {
@@ -138,9 +141,9 @@ export function WorldMap({
           </Geographies>
 
           {/* City markers */}
-          {cityMarkers.map((city, i) => (
+          {cityMarkers.map((city) => (
             <Marker
-              key={i}
+              key={`${city.lat},${city.lng}`}
               coordinates={[city.lng, city.lat]}
               onMouseEnter={(e: MouseEvent<SVGGElement>) =>
                 handleMouseEnter(
@@ -177,23 +180,21 @@ export function WorldMap({
 
       {/* Legend */}
       <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 rounded-lg border border-zinc-200 bg-white/90 p-2.5 text-xs backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/90">
-        <LegendItem color="#18181b" darkColor="#3f3f46" label="Visited" />
-        <LegendItem color="#2563eb" darkColor="#2563eb" label="Filtered" />
-        <LegendItem color="#f59e0b" darkColor="#f59e0b" label="City" isCircle />
-        <LegendItem color="#d4d4d8" darkColor="#52525b" label="Not visited" />
+        <LegendItem swatchClass="bg-zinc-900 dark:bg-zinc-700" label="Visited" />
+        <LegendItem swatchClass="bg-blue-600" label="Filtered" />
+        <LegendItem swatchClass="bg-amber-400" label="City" isCircle />
+        <LegendItem swatchClass="bg-zinc-300 dark:bg-zinc-600" label="Not visited" />
       </div>
     </div>
   );
 }
 
 function LegendItem({
-  color,
-  darkColor,
+  swatchClass,
   label,
   isCircle = false,
 }: {
-  color: string;
-  darkColor: string;
+  swatchClass: string;
   label: string;
   isCircle?: boolean;
 }) {
@@ -201,14 +202,10 @@ function LegendItem({
     <div className="flex items-center gap-1.5">
       {isCircle ? (
         <span
-          className="inline-block h-2.5 w-2.5 rounded-full border border-white dark:border-zinc-700"
-          style={{ backgroundColor: color }}
+          className={`inline-block h-2.5 w-2.5 rounded-full border border-white dark:border-zinc-700 ${swatchClass}`}
         />
       ) : (
-        <span
-          className="inline-block h-2.5 w-3 rounded-sm"
-          style={{ backgroundColor: color }}
-        />
+        <span className={`inline-block h-2.5 w-3 rounded-sm ${swatchClass}`} />
       )}
       <span className="text-zinc-600 dark:text-zinc-400">{label}</span>
     </div>
