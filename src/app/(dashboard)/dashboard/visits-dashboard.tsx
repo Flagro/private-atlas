@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import type { CountryOption, VisitWithRelations } from "@/types";
 import type { CountryStat, CityMarker } from "@/components/map/world-map";
@@ -31,23 +31,19 @@ export function VisitsDashboard({
   const [filterCountryId, setFilterCountryId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [view, setView] = useState<View>("list");
+  const [view, setView] = useState<View>(() => {
+    if (typeof window === "undefined") return "list";
+    const saved = localStorage.getItem("atlas-view");
+    return saved === "map" || saved === "list" ? saved : "list";
+  });
   const [mapFilterCode, setMapFilterCode] = useState<string | null>(null);
   const [countryStats, setCountryStats] =
     useState<CountryStat[]>(initialStats);
   const { toast } = useToast();
 
   // Persist view preference
-  const mounted = useRef(false);
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      const saved = localStorage.getItem("atlas-view");
-      if (saved === "map" || saved === "list") setView(saved);
-    }
-  }, []);
-  useEffect(() => {
-    if (mounted.current) localStorage.setItem("atlas-view", view);
+    localStorage.setItem("atlas-view", view);
   }, [view]);
 
   const countriesVisited = new Set(
