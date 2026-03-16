@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import type { CreateVisitInput, UpdateVisitInput } from "@/lib/validations/visits";
+import { emitVisitEvent, buildVisitEvent } from "@/features/integrations";
 
 const visitRelations = {
   country: { select: { id: true, name: true, code: true } },
@@ -28,7 +29,7 @@ export async function createVisit(userId: string, data: CreateVisitInput) {
     if (city) countryId = city.countryId;
   }
 
-  return prisma.visit.create({
+  const visit = await prisma.visit.create({
     data: {
       userId,
       countryId: countryId ?? null,
@@ -38,6 +39,21 @@ export async function createVisit(userId: string, data: CreateVisitInput) {
     },
     include: visitRelations,
   });
+
+  // Fire-and-forget — never blocks the response
+  void emitVisitEvent(
+    buildVisitEvent("VisitCreated", {
+      visitId: visit.id,
+      userId,
+      countryCode: visit.country?.code,
+      countryName: visit.country?.name,
+      cityName: visit.city?.name,
+      visitedAt: visit.visitedAt.toISOString(),
+      notes: visit.notes,
+    })
+  );
+
+  return visit;
 }
 
 export async function updateVisit(
@@ -48,7 +64,7 @@ export async function updateVisit(
   const existing = await prisma.visit.findFirst({ where: { id: visitId, userId } });
   if (!existing) return null;
 
-  return prisma.visit.update({
+  const visit = await prisma.visit.update({
     where: { id: visitId },
     data: {
       ...(data.countryId !== undefined ? { countryId: data.countryId } : {}),
@@ -58,11 +74,42 @@ export async function updateVisit(
     },
     include: visitRelations,
   });
+
+  void emitVisitEvent(
+    buildVisitEvent("VisitUpdated", {
+      visitId: visit.id,
+      userId,
+      countryCode: visit.country?.code,
+      countryName: visit.country?.name,
+      cityName: visit.city?.name,
+      visitedAt: visit.visitedAt.toISOString(),
+      notes: visit.notes,
+    })
+  );
+
+  return visit;
 }
 
 export async function deleteVisit(visitId: string, userId: string) {
-  const existing = await prisma.visit.findFirst({ where: { id: visitId, userId } });
+  const existing = await prisma.visit.findFirst({
+    where: { id: visitId, userId },
+    include: visitRelations,
+  });
   if (!existing) return false;
+
   await prisma.visit.delete({ where: { id: visitId } });
+
+  void emitVisitEvent(
+    buildVisitEvent("VisitDeleted", {
+      visitId,
+      userId,
+      countryCode: existing.country?.code,
+      countryName: existing.country?.name,
+      cityName: existing.city?.name,
+      visitedAt: existing.visitedAt.toISOString(),
+      notes: existing.notes,
+    })
+  );
+
   return true;
 }
