@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OAuthButtons, AuthDivider } from "@/components/auth/oauth-buttons";
 import { RegisterForm } from "./register-form";
 
 export default function RegisterPage() {
@@ -14,7 +15,11 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <RegisterForm />
+        <div className="space-y-6">
+          <OAuthButtons />
+          <AuthDivider />
+          <RegisterForm />
+        </div>
 
         <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
           Already have an account?{" "}
