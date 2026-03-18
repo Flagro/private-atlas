@@ -9,6 +9,10 @@ export default async function LoginPage({
   const params = await searchParams;
   const showRegisteredMessage = params.registered === "1";
   const hasError = params.error === "CredentialsSignin";
+  const hasOAuthError =
+    params.error === "OAuthCallbackError" ||
+    params.error === "OAuthAccountNotLinked" ||
+    params.error === "OAuthSignin";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
@@ -25,6 +29,7 @@ export default async function LoginPage({
         <LoginForm
           showRegisteredMessage={showRegisteredMessage}
           hasError={hasError}
+          hasOAuthError={hasOAuthError}
         />
 
         <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
