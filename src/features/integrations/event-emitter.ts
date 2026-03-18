@@ -1,0 +1,55 @@
+import type { IntegrationAdapter, VisitEvent, VisitEventType } from "./types";
+
+// Module-level registry of adapters. Register adapters at app startup.
+const adapters: IntegrationAdapter[] = [];
+
+/**
+ * Register an integration adapter.
+ * Call once per adapter at application start (e.g. in a server module).
+ *
+ * @example
+ * ```ts
+ * registerAdapter(calendarAdapter);
+ * registerAdapter(socialAdapter);
+ * ```
+ */
+export function registerAdapter(adapter: IntegrationAdapter): void {
+  adapters.push(adapter);
+}
+
+/**
+ * Emit a visit event to all registered adapters that handle it.
+ * Failures in individual adapters are logged but do not block the others.
+ * The function itself never throws.
+ */
+export async function emitVisitEvent(event: VisitEvent): Promise<void> {
+  const handlerKey = `on${event.type}` as `on${VisitEventType}`;
+
+  const results = await Promise.allSettled(
+    adapters
+      .filter((a) => typeof a[handlerKey] === "function")
+      .map((a) => a[handlerKey]!(event))
+  );
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === "rejected") {
+      console.error(
+        `[integrations] Adapter "${adapters[i].name}" failed on ${event.type}:`,
+        result.reason
+      );
+    }
+  }
+}
+
+/** Build a VisitEvent helper (sets occurredAt automatically). */
+export function buildVisitEvent(
+  type: VisitEventType,
+  payload: Omit<VisitEvent["payload"], never>
+): VisitEvent {
+  return {
+    type,
+    payload,
+    occurredAt: new Date().toISOString(),
+  };
+}
