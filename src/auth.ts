@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { signInSchema } from "@/lib/validations/auth";
@@ -17,11 +18,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const { email, password } = parsed.data;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
+        const user = await prisma.user.findUnique({ where: { email } });
 
-        if (!user) return null;
+        // User not found or registered via OAuth only (no password)
+        if (!user || !user.passwordHash) return null;
 
         const isValid = await verifyPassword(password, user.passwordHash);
         if (!isValid) return null;
@@ -33,23 +33,85 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       },
     }),
+
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
   ],
+
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+
   pages: {
     signIn: "/login",
+    error: "/login",
   },
+
   callbacks: {
-    jwt: async ({ token, user }) => {
-      if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
+    jwt: async ({ token, user, account }) => {
+      if (account && user) {
+        if (account.provider === "google") {
+          // Find or create a DB user for this Google sign-in, then link the
+          // OAuth account so subsequent sign-ins work without re-creating.
+          try {
+            let dbUser = await prisma.user.findUnique({
+              where: { email: user.email! },
+            });
+
+            if (!dbUser) {
+              dbUser = await prisma.user.create({
+                data: {
+                  email: user.email!,
+                  name: user.name ?? null,
+                  image: user.image ?? null,
+                },
+              });
+            } else if (user.name || user.image) {
+              // Keep name / avatar in sync if the user hasn't set their own
+              dbUser = await prisma.user.update({
+                where: { id: dbUser.id },
+                data: {
+                  name: dbUser.name ?? user.name ?? null,
+                  image: dbUser.image ?? user.image ?? null,
+                },
+              });
+            }
+
+            // Ensure the OAuth account row exists (idempotent)
+            await prisma.oAuthAccount.upsert({
+              where: {
+                provider_providerAccountId: {
+                  provider: "google",
+                  providerAccountId: account.providerAccountId,
+                },
+              },
+              create: {
+                userId: dbUser.id,
+                provider: "google",
+                providerAccountId: account.providerAccountId,
+              },
+              update: {},
+            });
+
+            token.id = dbUser.id;
+            token.email = dbUser.email;
+            token.name = dbUser.name;
+          } catch (err) {
+            console.error("[auth] Google jwt error:", err);
+          }
+        } else {
+          // Credentials sign-in: user object comes from authorize()
+          token.id = user.id;
+          token.email = user.email;
+          token.name = user.name;
+        }
       }
       return token;
     },
+
     session: async ({ session, token }) => {
       if (session.user) {
         session.user.id = token.id as string;
