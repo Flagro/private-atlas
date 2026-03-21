@@ -25,17 +25,19 @@ export function registerAdapter(adapter: IntegrationAdapter): void {
 export async function emitVisitEvent(event: VisitEvent): Promise<void> {
   const handlerKey = `on${event.type}` as `on${VisitEventType}`;
 
+  const activeAdapters = adapters.filter(
+    (a) => typeof a[handlerKey] === "function"
+  );
+
   const results = await Promise.allSettled(
-    adapters
-      .filter((a) => typeof a[handlerKey] === "function")
-      .map((a) => a[handlerKey]!(event))
+    activeAdapters.map((a) => a[handlerKey]!(event))
   );
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     if (result.status === "rejected") {
       console.error(
-        `[integrations] Adapter "${adapters[i].name}" failed on ${event.type}:`,
+        `[integrations] Adapter "${activeAdapters[i].name}" failed on ${event.type}:`,
         result.reason
       );
     }
