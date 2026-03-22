@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
 import type { CountryOption, VisitWithRelations } from "@/types";
 import type { CountryStat, CityMarker } from "@/components/map/world-map";
-import { countryCodeToFlag } from "@/lib/utils";
+import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
 
 const WorldMap = dynamic(
   () => import("@/components/map/world-map").then((m) => m.WorldMap),
@@ -101,11 +101,7 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
           filteredVisits.map((v) => {
             const flag = v.country ? countryCodeToFlag(v.country.code) : "🌍";
             const place = [v.country?.name, v.city?.name].filter(Boolean).join(" · ");
-            const date = new Date(v.visitedAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            });
+            const date = formatVisitDate(v.visitedAt);
             return (
               <div
                 key={v.id}
