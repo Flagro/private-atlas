@@ -30,10 +30,12 @@ export async function getCountryStats(userId: string) {
   for (const v of visits) {
     const code = v.country?.code;
     if (!code) continue;
-    if (!statsMap.has(code)) {
-      statsMap.set(code, { visitCount: 0, lastVisited: v.visitedAt });
+    const existing = statsMap.get(code);
+    if (!existing) {
+      statsMap.set(code, { visitCount: 1, lastVisited: v.visitedAt });
+    } else {
+      existing.visitCount += 1;
     }
-    statsMap.get(code)!.visitCount += 1;
   }
 
   return Array.from(statsMap.entries()).map(([code, s]) => ({
