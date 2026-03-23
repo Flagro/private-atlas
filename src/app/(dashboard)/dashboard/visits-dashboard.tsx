@@ -99,10 +99,15 @@ export function VisitsDashboard({
     for (const v of updatedVisits) {
       const code = v.country?.code;
       if (!code) continue;
-      if (!statsMap.has(code)) {
-        statsMap.set(code, { visitCount: 0, lastVisited: v.visitedAt });
+      const existing = statsMap.get(code);
+      if (!existing) {
+        statsMap.set(code, { visitCount: 1, lastVisited: v.visitedAt });
+      } else {
+        existing.visitCount += 1;
+        if (v.visitedAt > existing.lastVisited) {
+          existing.lastVisited = v.visitedAt;
+        }
       }
-      statsMap.get(code)!.visitCount += 1;
     }
     setCountryStats(
       Array.from(statsMap.entries()).map(([code, s]) => ({
