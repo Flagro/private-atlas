@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { hashPassword } from "@/lib/password";
 import { registerSchema } from "@/lib/validations/auth";
 
@@ -16,17 +17,6 @@ export async function POST(request: Request) {
     }
 
     const { email, password, name } = parsed.data;
-
-    const existing = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
-      );
-    }
 
     const passwordHash = await hashPassword(password);
 
@@ -47,6 +37,15 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 409 }
+      );
+    }
     console.error("Registration error:", error);
     return NextResponse.json(
       { error: "Something went wrong" },
