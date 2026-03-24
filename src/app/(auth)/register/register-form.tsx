@@ -26,6 +26,7 @@ export function RegisterForm() {
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
       setError(firstIssue?.message ?? "Invalid input");
+      setIsSubmitting(false);
       return;
     }
 
