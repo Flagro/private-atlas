@@ -12,7 +12,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "postinstall": "cp node_modules/world-atlas/countries-110m.json public/countries-110m.json"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -26,6 +27,7 @@
     "react-dom": "19.2.3",
     "react-simple-maps": "^3.0.0",
     "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
