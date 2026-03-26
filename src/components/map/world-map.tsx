@@ -12,8 +12,7 @@ import {
 import type { GeographyFeature } from "react-simple-maps";
 import { numericToAlpha2 } from "@/lib/iso-codes";
 
-const GEO_URL =
-  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const GEO_URL = "/countries-110m.json";
 
 export interface CountryStat {
   code: string;
