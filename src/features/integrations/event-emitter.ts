@@ -1,4 +1,4 @@
-import type { IntegrationAdapter, VisitEvent, VisitEventType } from "./types";
+import type { IntegrationAdapter, VisitEvent, VisitEventPayload, VisitEventType } from "./types";
 
 // Module-level registry of adapters. Register adapters at app startup.
 const adapters: IntegrationAdapter[] = [];
@@ -47,7 +47,7 @@ export async function emitVisitEvent(event: VisitEvent): Promise<void> {
 /** Build a VisitEvent helper (sets occurredAt automatically). */
 export function buildVisitEvent(
   type: VisitEventType,
-  payload: Omit<VisitEvent["payload"], never>
+  payload: VisitEventPayload
 ): VisitEvent {
   return {
     type,
