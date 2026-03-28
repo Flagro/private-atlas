@@ -20,29 +20,33 @@ export async function getCountriesWithVisitStatus(userId: string) {
 }
 
 export async function getCountryStats(userId: string) {
-  const visits = await prisma.visit.findMany({
+  const groups = await prisma.visit.groupBy({
+    by: ["countryId"],
     where: { userId, countryId: { not: null } },
-    select: { countryId: true, visitedAt: true, country: { select: { code: true } } },
-    orderBy: { visitedAt: "desc" },
+    _count: { id: true },
+    _max: { visitedAt: true },
   });
 
-  const statsMap = new Map<string, { visitCount: number; lastVisited: Date }>();
-  for (const v of visits) {
-    const code = v.country?.code;
-    if (!code) continue;
-    const existing = statsMap.get(code);
-    if (!existing) {
-      statsMap.set(code, { visitCount: 1, lastVisited: v.visitedAt });
-    } else {
-      existing.visitCount += 1;
-    }
-  }
+  const countryIds = groups
+    .map((g) => g.countryId)
+    .filter((id): id is string => id !== null);
 
-  return Array.from(statsMap.entries()).map(([code, s]) => ({
-    code,
-    visitCount: s.visitCount,
-    lastVisited: s.lastVisited.toISOString(),
-  }));
+  if (countryIds.length === 0) return [];
+
+  const countries = await prisma.country.findMany({
+    where: { id: { in: countryIds } },
+    select: { id: true, code: true },
+  });
+
+  const countryCodeById = new Map(countries.map((c) => [c.id, c.code]));
+
+  return groups
+    .filter((g) => g.countryId !== null && g._max.visitedAt !== null)
+    .map((g) => ({
+      code: countryCodeById.get(g.countryId!)!,
+      visitCount: g._count.id,
+      lastVisited: g._max.visitedAt!.toISOString(),
+    }));
 }
 
 export async function getCitiesByCountry(countryId?: string) {
