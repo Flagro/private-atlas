@@ -46,25 +46,36 @@ export function VisitsDashboard({
     localStorage.setItem("atlas-view", view);
   }, [view]);
 
-  const countriesVisited = new Set(
-    visits.filter((v) => v.countryId).map((v) => v.countryId)
-  ).size;
-  const citiesVisited = new Set(
-    visits.filter((v) => v.cityId).map((v) => v.cityId)
-  ).size;
+  const countriesVisited = useMemo(
+    () => new Set(visits.filter((v) => v.countryId).map((v) => v.countryId)).size,
+    [visits]
+  );
+  const citiesVisited = useMemo(
+    () => new Set(visits.filter((v) => v.cityId).map((v) => v.cityId)).size,
+    [visits]
+  );
 
-  const visitedCountries = countries.filter((c) =>
-    visits.some((v) => v.countryId === c.id)
+  const visitedCountryIds = useMemo(
+    () => new Set(visits.map((v) => v.countryId).filter(Boolean)),
+    [visits]
+  );
+  const visitedCountries = useMemo(
+    () => countries.filter((c) => visitedCountryIds.has(c.id)),
+    [countries, visitedCountryIds]
   );
 
   const effectiveFilterId =
-    filterCountryId && visitedCountries.some((c) => c.id === filterCountryId)
+    filterCountryId && visitedCountryIds.has(filterCountryId)
       ? filterCountryId
       : "";
 
-  const filtered = effectiveFilterId
-    ? visits.filter((v) => v.countryId === effectiveFilterId)
-    : visits;
+  const filtered = useMemo(
+    () =>
+      effectiveFilterId
+        ? visits.filter((v) => v.countryId === effectiveFilterId)
+        : visits,
+    [visits, effectiveFilterId]
+  );
 
   // Map-specific derived data
   const visitedCodes = useMemo(
