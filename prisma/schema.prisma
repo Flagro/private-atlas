@@ -62,6 +62,7 @@ model City {
   visits  Visit[]
 
   @@unique([name, countryId])
+  @@index([countryId])
   @@map("cities")
 }
 
@@ -79,5 +80,8 @@ model Visit {
   country Country? @relation(fields: [countryId], references: [id], onDelete: Cascade)
   city    City?    @relation(fields: [cityId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([countryId])
+  @@index([cityId])
   @@map("visits")
 }
