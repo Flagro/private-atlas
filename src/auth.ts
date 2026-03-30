@@ -54,23 +54,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     jwt: async ({ token, user, account }) => {
       if (account && user) {
         if (account.provider === "google") {
-          // Find or create a DB user for this Google sign-in, then link the
-          // OAuth account so subsequent sign-ins work without re-creating.
+          // Atomically find-or-create the DB user for this Google sign-in,
+          // then link the OAuth account so subsequent sign-ins work.
+          // upsert eliminates the findUnique → create race condition where
+          // two concurrent Google sign-ins with the same email could both
+          // pass the existence check and collide on insert.
           try {
-            let dbUser = await prisma.user.findUnique({
+            let dbUser = await prisma.user.upsert({
               where: { email: user.email! },
+              create: {
+                email: user.email!,
+                name: user.name ?? null,
+                image: user.image ?? null,
+              },
+              update: {},
             });
 
-            if (!dbUser) {
-              dbUser = await prisma.user.create({
-                data: {
-                  email: user.email!,
-                  name: user.name ?? null,
-                  image: user.image ?? null,
-                },
-              });
-            } else if (user.name || user.image) {
-              // Keep name / avatar in sync if the user hasn't set their own
+            // Back-fill name / avatar from the provider only when the stored
+            // values are still empty (preserves any user-set overrides).
+            if ((user.name && !dbUser.name) || (user.image && !dbUser.image)) {
               dbUser = await prisma.user.update({
                 where: { id: dbUser.id },
                 data: {
