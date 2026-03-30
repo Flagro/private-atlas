@@ -6,7 +6,11 @@ import { registerSchema } from "@/lib/validations/auth";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -17,6 +21,14 @@ export async function POST(request: Request) {
     }
 
     const { email, password, name } = parsed.data;
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 409 }
+      );
+    }
 
     const passwordHash = await hashPassword(password);
 
