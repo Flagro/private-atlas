@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
-import { updateVisit, deleteVisit } from "@/features/visits";
+import {
+  updateVisit,
+  deleteVisit,
+  InvalidVisitPlaceError,
+} from "@/features/visits";
 import { updateVisitSchema } from "@/lib/validations/visits";
 
 export async function PATCH(
@@ -24,12 +28,18 @@ export async function PATCH(
     );
   }
 
-  const visit = await updateVisit(id, user!.id, parsed.data);
-  if (!visit) {
-    return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+  try {
+    const visit = await updateVisit(id, user!.id, parsed.data);
+    if (!visit) {
+      return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+    }
+    return NextResponse.json(visit);
+  } catch (err) {
+    if (err instanceof InvalidVisitPlaceError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    throw err;
   }
-
-  return NextResponse.json(visit);
 }
 
 export async function DELETE(
