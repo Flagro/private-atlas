@@ -32,21 +32,24 @@ export function AddVisitDialog({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!countryId) {
-      setCities([]);
-      setCityId("");
-      return;
-    }
+    if (!countryId) return;
 
     const controller = new AbortController();
+    // Loading state tracks in-flight fetch for this country; effect syncs URL → list.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional fetch lifecycle
     setLoadingCities(true);
-    setCityId("");
 
     fetch(`/api/places/cities?countryId=${countryId}`, {
       signal: controller.signal,
     })
-      .then((r) => r.json())
-      .then((data: CityOption[]) => setCities(data))
+      .then(async (r) => {
+        if (!r.ok) {
+          setCities([]);
+          return;
+        }
+        const data: unknown = await r.json();
+        setCities(Array.isArray(data) ? (data as CityOption[]) : []);
+      })
       .catch((e) => {
         if (e.name !== "AbortError") setCities([]);
       })
@@ -78,16 +81,23 @@ export function AddVisitDialog({
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch("/api/visits", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        countryId: countryId || undefined,
-        cityId: cityId || undefined,
-        visitedAt,
-        notes: notes.trim() || undefined,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/visits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          countryId: countryId || undefined,
+          cityId: cityId || undefined,
+          visitedAt,
+          notes: notes.trim() || undefined,
+        }),
+      });
+    } catch {
+      setSubmitting(false);
+      setError("Network error. Check your connection and try again.");
+      return;
+    }
 
     const data = await res.json().catch(() => ({}));
     setSubmitting(false);
@@ -153,7 +163,12 @@ export function AddVisitDialog({
             <Select
               id="visit-country"
               value={countryId}
-              onChange={(e) => setCountryId(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCountryId(v);
+                setCityId("");
+                if (!v) setCities([]);
+              }}
             >
               <option value="">Select a country…</option>
               {countries.map((c) => (
