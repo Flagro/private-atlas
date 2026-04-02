@@ -32,11 +32,18 @@ export function RegisterForm() {
 
     const { email, password, name } = parsed.data;
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
+      });
+    } catch {
+      setIsSubmitting(false);
+      setError("Network error. Check your connection and try again.");
+      return;
+    }
 
     const data = await res.json().catch(() => ({}));
     setIsSubmitting(false);
