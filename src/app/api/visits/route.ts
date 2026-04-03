@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
-import { getVisitsWithRelations, createVisit } from "@/features/visits";
+import {
+  getVisitsWithRelations,
+  createVisit,
+  InvalidVisitPlaceError,
+} from "@/features/visits";
 import { createVisitSchema } from "@/lib/validations/visits";
 
 export async function GET(request: Request) {
@@ -31,6 +35,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const visit = await createVisit(user!.id, parsed.data);
-  return NextResponse.json(visit, { status: 201 });
+  try {
+    const visit = await createVisit(user!.id, parsed.data);
+    return NextResponse.json(visit, { status: 201 });
+  } catch (err) {
+    if (err instanceof InvalidVisitPlaceError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    throw err;
+  }
 }
