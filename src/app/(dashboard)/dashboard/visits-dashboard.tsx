@@ -138,7 +138,18 @@ export function VisitsDashboard({
 
   async function handleDelete(id: string) {
     setDeletingIds((prev) => new Set([...prev, id]));
-    const res = await fetch(`/api/visits/${id}`, { method: "DELETE" });
+    let res: Response;
+    try {
+      res = await fetch(`/api/visits/${id}`, { method: "DELETE" });
+    } catch {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast("Network error. Could not delete visit.", "error");
+      return;
+    }
     setDeletingIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
