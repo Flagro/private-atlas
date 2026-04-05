@@ -4,7 +4,16 @@ interface OAuthButtonsProps {
   redirectTo?: string;
 }
 
+function isGoogleOAuthConfigured(): boolean {
+  return Boolean(
+    process.env.GOOGLE_CLIENT_ID?.trim() &&
+      process.env.GOOGLE_CLIENT_SECRET?.trim()
+  );
+}
+
 export function OAuthButtons({ redirectTo = "/dashboard" }: OAuthButtonsProps) {
+  if (!isGoogleOAuthConfigured()) return null;
+
   return (
     <form
       action={async () => {
@@ -24,6 +33,8 @@ export function OAuthButtons({ redirectTo = "/dashboard" }: OAuthButtonsProps) {
 }
 
 export function AuthDivider() {
+  if (!isGoogleOAuthConfigured()) return null;
+
   return (
     <div className="relative">
       <div className="absolute inset-0 flex items-center">
