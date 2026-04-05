@@ -11,8 +11,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, errorResponse } = await requireAuth();
-  if (errorResponse) return errorResponse;
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
   const body = await request.json().catch(() => null);
@@ -29,7 +29,7 @@ export async function PATCH(
   }
 
   try {
-    const visit = await updateVisit(id, user!.id, parsed.data);
+    const visit = await updateVisit(id, auth.user.id, parsed.data);
     if (!visit) {
       return NextResponse.json({ error: "Visit not found" }, { status: 404 });
     }
@@ -46,11 +46,11 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { user, errorResponse } = await requireAuth();
-  if (errorResponse) return errorResponse;
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const deleted = await deleteVisit(id, user!.id);
+  const deleted = await deleteVisit(id, auth.user.id);
   if (!deleted) {
     return NextResponse.json({ error: "Visit not found" }, { status: 404 });
   }
