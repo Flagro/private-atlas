@@ -3,9 +3,9 @@ import { requireAuth } from "@/lib/api-auth";
 import { getCountryStats } from "@/features/places";
 
 export async function GET() {
-  const { user, errorResponse } = await requireAuth();
-  if (errorResponse) return errorResponse;
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
-  const stats = await getCountryStats(user!.id);
+  const stats = await getCountryStats(auth.user.id);
   return NextResponse.json(stats);
 }
