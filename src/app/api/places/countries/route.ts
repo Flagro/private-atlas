@@ -3,9 +3,9 @@ import { requireAuth } from "@/lib/api-auth";
 import { getCountriesWithVisitStatus } from "@/features/places";
 
 export async function GET() {
-  const { user, errorResponse } = await requireAuth();
-  if (errorResponse) return errorResponse;
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
-  const countries = await getCountriesWithVisitStatus(user!.id);
+  const countries = await getCountriesWithVisitStatus(auth.user.id);
   return NextResponse.json(countries);
 }
