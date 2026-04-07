@@ -3,8 +3,8 @@ import { requireAuth } from "@/lib/api-auth";
 import { getCitiesByCountry } from "@/features/places";
 
 export async function GET(request: Request) {
-  const { errorResponse } = await requireAuth();
-  if (errorResponse) return errorResponse;
+  const auth = await requireAuth();
+  if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
   const countryId = searchParams.get("countryId") ?? undefined;
