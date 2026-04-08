@@ -29,30 +29,36 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100/80 dark:from-zinc-950 dark:to-zinc-950">
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-60 lg:shrink-0 lg:flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-60 lg:shrink-0 lg:flex-col border-r border-zinc-200/80 bg-white/90 shadow-sm shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/95 dark:shadow-none">
         {/* Branding */}
-        <div className="flex h-14 items-center border-b border-zinc-200 px-5 dark:border-zinc-800">
+        <div className="flex h-14 items-center border-b border-zinc-200/80 px-5 dark:border-zinc-800">
           <Link
             href="/dashboard"
-            className="font-semibold text-zinc-900 dark:text-zinc-100"
+            className="flex items-center gap-2 font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
           >
+            <span
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 text-sm shadow-sm"
+              aria-hidden
+            >
+              🌍
+            </span>
             Private Atlas
           </Link>
         </div>
 
         {/* Nav links */}
-        <nav className="flex-1 space-y-0.5 p-3">
+        <nav className="flex-1 space-y-1 p-3">
           {NAV_ITEMS.map(({ href, label, Icon }) => (
             <Link
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive(href)
-                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-                  : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  ? "bg-teal-50 text-teal-900 shadow-sm dark:bg-teal-950/50 dark:text-teal-100"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100"
               )}
             >
               <Icon />
@@ -62,13 +68,14 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
         </nav>
 
         {/* User + sign out */}
-        <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="border-t border-zinc-200/80 p-4 dark:border-zinc-800">
           <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
             {displayName}
           </p>
           <button
+            type="button"
             onClick={handleSignOut}
-            className="mt-1.5 text-sm text-zinc-400 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
+            className="mt-1.5 text-sm text-zinc-500 transition-colors hover:text-teal-700 dark:text-zinc-400 dark:hover:text-teal-300"
           >
             Sign out
           </button>
@@ -78,12 +85,18 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
       {/* ── Mobile + main content column ── */}
       <div className="flex flex-1 flex-col">
         {/* Mobile top header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur-sm lg:hidden dark:border-zinc-800 dark:bg-zinc-900/95">
           <Link
             href="/dashboard"
-            className="font-semibold text-zinc-900 dark:text-zinc-100"
+            className="flex items-center gap-2 font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
           >
-            Private Atlas
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-teal-500 to-emerald-600 text-xs shadow-sm"
+              aria-hidden
+            >
+              🌍
+            </span>
+            Atlas
           </Link>
           <button
             onClick={handleSignOut}
@@ -94,21 +107,21 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 px-4 py-6 pb-24 lg:px-8 lg:py-8 lg:pb-8">
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24 lg:px-8 lg:py-10 lg:pb-8">
           {children}
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-zinc-200 bg-white px-2 py-1 lg:hidden dark:border-zinc-800 dark:bg-zinc-900">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-zinc-200/80 bg-white/95 px-2 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden dark:border-zinc-800 dark:bg-zinc-900/95">
           {NAV_ITEMS.map(({ href, label, Icon }) => (
             <Link
               key={href}
               href={href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 rounded-lg py-2 text-xs font-medium transition-colors",
+                "flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-xs font-medium transition-colors",
                 isActive(href)
-                  ? "text-zinc-900 dark:text-zinc-100"
-                  : "text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  ? "text-teal-700 dark:text-teal-300"
+                  : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
               )}
             >
               <Icon />
