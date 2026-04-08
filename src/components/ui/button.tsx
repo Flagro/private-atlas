@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "secondary" | "ghost" | "destructive";
+  variant?: "default" | "accent" | "secondary" | "ghost" | "destructive";
   size?: "sm" | "md" | "lg";
   loading?: boolean;
 }
@@ -27,6 +27,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const variants = {
       default:
         "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200",
+      accent:
+        "bg-teal-600 text-white shadow-sm shadow-teal-900/10 hover:bg-teal-700 focus:ring-teal-500 dark:bg-teal-600 dark:hover:bg-teal-500",
       secondary:
         "border border-zinc-300 text-zinc-900 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800",
       ghost:
