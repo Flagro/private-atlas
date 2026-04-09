@@ -131,13 +131,21 @@ export function AddVisitDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 px-4 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl dark:bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-700">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            Add Visit
+      <div
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl shadow-zinc-900/20 ring-1 ring-zinc-900/5 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40 dark:ring-white/10"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-visit-title"
+      >
+        <div className="flex items-center justify-between border-b border-zinc-200/80 bg-gradient-to-r from-teal-50/80 to-transparent px-6 py-4 dark:border-zinc-700 dark:from-teal-950/40 dark:to-transparent">
+          <h2
+            id="add-visit-title"
+            className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+          >
+            Add visit
           </h2>
           <button
             onClick={handleClose}
@@ -238,7 +246,7 @@ export function AddVisitDialog({
             <Button type="button" variant="secondary" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" loading={submitting}>
+            <Button type="submit" variant="accent" loading={submitting}>
               Save visit
             </Button>
           </div>
