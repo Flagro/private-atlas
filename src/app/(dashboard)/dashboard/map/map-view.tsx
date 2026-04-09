@@ -52,18 +52,19 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
     : null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          World Map
+    <div className="space-y-8">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          World map
         </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Click a visited country to filter the visit list.
+        <p className="mt-1 max-w-lg text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+          Tap a country you&apos;ve visited to filter the list below. Zoom and
+          explore city markers.
         </p>
-      </div>
+      </header>
 
       {/* Map */}
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-lg shadow-zinc-900/5 ring-1 ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20 dark:ring-white/5">
         <WorldMap
           visitedCodes={visitedCodes}
           countryStats={countryStats}
@@ -130,8 +131,9 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
 
 function MapSkeleton() {
   return (
-    <div className="flex h-64 items-center justify-center text-sm text-zinc-400 dark:text-zinc-500">
-      Loading map…
+    <div className="flex h-72 flex-col items-center justify-center gap-3 rounded-xl bg-gradient-to-b from-zinc-100 to-zinc-50 dark:from-zinc-800 dark:to-zinc-900">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal-600 border-t-transparent dark:border-teal-400" />
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading map…</p>
     </div>
   );
 }
