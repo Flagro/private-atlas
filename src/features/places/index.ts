@@ -49,9 +49,9 @@ export async function getCountryStats(userId: string) {
     }));
 }
 
-export async function getCitiesByCountry(countryId?: string) {
+export async function getCitiesByCountry(countryId: string) {
   return prisma.city.findMany({
-    where: countryId ? { countryId } : undefined,
+    where: { countryId },
     select: { id: true, name: true, countryId: true },
     orderBy: { name: "asc" },
   });
