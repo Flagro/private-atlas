@@ -7,7 +7,13 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const countryId = searchParams.get("countryId") ?? undefined;
+  const countryId = searchParams.get("countryId")?.trim();
+  if (!countryId) {
+    return NextResponse.json(
+      { error: "Query parameter countryId is required" },
+      { status: 400 }
+    );
+  }
 
   const cities = await getCitiesByCountry(countryId);
   return NextResponse.json(cities);
