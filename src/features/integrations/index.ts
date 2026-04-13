@@ -12,10 +12,9 @@
  * 3. Visit events (created / updated / deleted) are emitted automatically by
  *    the visits feature and forwarded to all registered adapters.
  *
- * Built-in adapter stubs (activate by implementing the methods):
- *   src/features/integrations/calendar/   — Google Calendar sync
- *   src/features/integrations/images/     — Photo attachments
- *   src/features/integrations/social/     — Social sharing
+ * There are no built-in adapters in-repo yet; add modules (e.g. calendar sync)
+ * that implement `IntegrationAdapter`, then call `registerAdapter` once at
+ * server startup (for example from `instrumentation.ts`).
  */
 
 export type {
