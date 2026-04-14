@@ -75,7 +75,7 @@ export function AddVisitDialog({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!countryId && !cityId) {
-      setError("Please select at least a country.");
+      setError("Please select a country or city.");
       return;
     }
     setSubmitting(true);
