@@ -1,12 +1,20 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import type { Provider } from "next-auth/providers";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { signInSchema } from "@/lib/validations/auth";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [
+function googleOAuthEnv() {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  return { clientId, clientSecret };
+}
+
+const googleEnv = googleOAuthEnv();
+const providers: Provider[] = [
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -33,12 +41,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       },
     }),
+];
 
+if (googleEnv) {
+  providers.push(
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
-  ],
+      clientId: googleEnv.clientId,
+      clientSecret: googleEnv.clientSecret,
+    })
+  );
+}
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers,
 
   session: {
     strategy: "jwt",
@@ -103,6 +118,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.name = dbUser.name;
           } catch (err) {
             console.error("[auth] Google jwt error:", err);
+            throw err;
           }
         } else {
           // Credentials sign-in: user object comes from authorize()
