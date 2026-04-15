@@ -56,5 +56,6 @@ npm run db:seed
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `AUTH_SECRET` | NextAuth secret — generate with `npx auth secret` |
+| `AUTH_URL` | Public site URL (e.g. `https://your-domain.com`) — set in production so OAuth callbacks and auth URLs resolve correctly behind proxies or custom hosts |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (optional) |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional) |
