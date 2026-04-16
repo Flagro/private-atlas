@@ -40,13 +40,18 @@ export async function getCountryStats(userId: string) {
 
   const countryCodeById = new Map(countries.map((c) => [c.id, c.code]));
 
-  return groups
-    .filter((g) => g.countryId !== null && g._max.visitedAt !== null)
-    .map((g) => ({
-      code: countryCodeById.get(g.countryId!)!,
-      visitCount: g._count.id,
-      lastVisited: g._max.visitedAt!.toISOString(),
-    }));
+  return groups.flatMap((g) => {
+    if (g.countryId === null || g._max.visitedAt === null) return [];
+    const code = countryCodeById.get(g.countryId);
+    if (!code) return [];
+    return [
+      {
+        code,
+        visitCount: g._count.id,
+        lastVisited: g._max.visitedAt.toISOString(),
+      },
+    ];
+  });
 }
 
 export async function getCitiesByCountry(countryId: string) {
