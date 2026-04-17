@@ -23,24 +23,28 @@ export function registerAdapter(adapter: IntegrationAdapter): void {
  * The function itself never throws.
  */
 export async function emitVisitEvent(event: VisitEvent): Promise<void> {
-  const handlerKey = `on${event.type}` as `on${VisitEventType}`;
+  try {
+    const handlerKey = `on${event.type}` as `on${VisitEventType}`;
 
-  const activeAdapters = adapters.filter(
-    (a) => typeof a[handlerKey] === "function"
-  );
+    const activeAdapters = adapters.filter(
+      (a) => typeof a[handlerKey] === "function"
+    );
 
-  const results = await Promise.allSettled(
-    activeAdapters.map((a) => a[handlerKey]!(event))
-  );
+    const results = await Promise.allSettled(
+      activeAdapters.map((a) => a[handlerKey]!(event))
+    );
 
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-    if (result.status === "rejected") {
-      console.error(
-        `[integrations] Adapter "${activeAdapters[i].name}" failed on ${event.type}:`,
-        result.reason
-      );
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.status === "rejected") {
+        console.error(
+          `[integrations] Adapter "${activeAdapters[i].name}" failed on ${event.type}:`,
+          result.reason
+        );
+      }
     }
+  } catch (err) {
+    console.error("[integrations] Unexpected event emitter failure:", err);
   }
 }
 
