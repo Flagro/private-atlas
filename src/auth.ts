@@ -69,6 +69,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     jwt: async ({ token, user, account }) => {
       if (account && user) {
         if (account.provider === "google") {
+          const email = user.email?.trim();
+          if (!email) {
+            console.error("[auth] Google profile is missing an email");
+            throw new Error("Google account is missing an email address");
+          }
+
           // Atomically find-or-create the DB user for this Google sign-in,
           // then link the OAuth account so subsequent sign-ins work.
           // upsert eliminates the findUnique → create race condition where
@@ -76,9 +82,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // pass the existence check and collide on insert.
           try {
             let dbUser = await prisma.user.upsert({
-              where: { email: user.email! },
+              where: { email },
               create: {
-                email: user.email!,
+                email,
                 name: user.name ?? null,
                 image: user.image ?? null,
               },
