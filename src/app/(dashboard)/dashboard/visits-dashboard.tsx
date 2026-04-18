@@ -87,7 +87,7 @@ export function VisitsDashboard({
     const seen = new Set<string>();
     const markers: CityMarker[] = [];
     for (const v of visits) {
-      if (!v.city?.lat || !v.city?.lng || !v.country) continue;
+      if (v.city?.lat == null || v.city?.lng == null || !v.country) continue;
       const key = `${v.city.lat},${v.city.lng}`;
       if (seen.has(key)) continue;
       seen.add(key);
