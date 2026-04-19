@@ -6,6 +6,7 @@ import type { CountryOption, VisitWithRelations } from "@/types";
 import type { CountryStat, CityMarker } from "@/components/map/world-map";
 import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
 import { AddVisitDialog } from "./add-visit-dialog";
+import { EditVisitDialog } from "./edit-visit-dialog";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 
@@ -31,6 +32,7 @@ export function VisitsDashboard({
   const [filterCountryId, setFilterCountryId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [editingVisit, setEditingVisit] = useState<VisitWithRelations | null>(null);
   const [view, setView] = useState<View>(() => {
     if (typeof window === "undefined") return "list";
     const saved = localStorage.getItem("atlas-view");
@@ -134,6 +136,13 @@ export function VisitsDashboard({
     setVisits(updated);
     refreshStats(updated);
     toast("Visit added!", "success");
+  }
+
+  function handleEdit(updated: VisitWithRelations) {
+    const next = visits.map((v) => (v.id === updated.id ? updated : v));
+    setVisits(next);
+    refreshStats(next);
+    toast("Visit updated!", "success");
   }
 
   async function handleDelete(id: string) {
@@ -269,6 +278,7 @@ export function VisitsDashboard({
                   key={visit.id}
                   visit={visit}
                   onDelete={handleDelete}
+                  onEdit={setEditingVisit}
                   deleting={deletingIds.has(visit.id)}
                 />
               ))
@@ -291,6 +301,7 @@ export function VisitsDashboard({
                 key={visit.id}
                 visit={visit}
                 onDelete={handleDelete}
+                onEdit={setEditingVisit}
                 deleting={deletingIds.has(visit.id)}
               />
             ))
@@ -303,6 +314,13 @@ export function VisitsDashboard({
         countries={countries}
         onClose={() => setDialogOpen(false)}
         onAdd={handleAdd}
+      />
+
+      <EditVisitDialog
+        visit={editingVisit}
+        countries={countries}
+        onClose={() => setEditingVisit(null)}
+        onEdit={handleEdit}
       />
     </>
   );
@@ -366,16 +384,33 @@ function StatCard({
 function VisitCard({
   visit,
   onDelete,
+  onEdit,
   deleting,
 }: {
   visit: VisitWithRelations;
   onDelete: (id: string) => void;
+  onEdit: (visit: VisitWithRelations) => void;
   deleting: boolean;
 }) {
+  const [confirming, setConfirming] = useState(false);
+
   const flag = visit.country ? countryCodeToFlag(visit.country.code) : "🌍";
   const place = [visit.country?.name, visit.city?.name]
     .filter(Boolean)
     .join(" · ");
+
+  function handleDeleteClick() {
+    setConfirming(true);
+  }
+
+  function handleConfirm() {
+    setConfirming(false);
+    onDelete(visit.id);
+  }
+
+  function handleCancel() {
+    setConfirming(false);
+  }
 
   return (
     <div className="group flex items-start justify-between gap-4 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-zinc-700">
@@ -395,18 +430,51 @@ function VisitCard({
           </p>
         )}
       </div>
-      <button
-        onClick={() => onDelete(visit.id)}
-        disabled={deleting}
-        aria-label="Delete visit"
-        className="shrink-0 rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-red-600 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-red-400"
-      >
-        {deleting ? (
-          <span className="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+
+      <div className="flex shrink-0 items-center gap-1">
+        {confirming ? (
+          <>
+            <span className="mr-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Delete?
+            </span>
+            <button
+              onClick={handleCancel}
+              className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={deleting}
+              className="rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-40 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
+            >
+              {deleting ? (
+                <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                "Delete"
+              )}
+            </button>
+          </>
         ) : (
-          <TrashIcon />
+          <>
+            <button
+              onClick={() => onEdit(visit)}
+              aria-label="Edit visit"
+              className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            >
+              <PencilIcon />
+            </button>
+            <button
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              aria-label="Delete visit"
+              className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-red-600 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-red-400"
+            >
+              <TrashIcon />
+            </button>
+          </>
         )}
-      </button>
+      </div>
     </div>
   );
 }
@@ -476,6 +544,26 @@ function TrashIcon() {
       <path d="M10 11v6" />
       <path d="M14 11v6" />
       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
   );
 }
