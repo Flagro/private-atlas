@@ -107,7 +107,11 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
         </header>
 
         {/* Page content */}
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24 lg:px-8 lg:py-10 lg:pb-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24 outline-none lg:px-8 lg:py-10 lg:pb-8"
+        >
           {children}
         </main>
 
