@@ -4,6 +4,11 @@ import { getCountriesWithVisitStatus, getCountryStats } from "@/features/places"
 import { MapView } from "./map-view";
 import type { VisitWithRelations } from "@/types";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Map",
+};
 
 export default async function MapPage() {
   const session = await auth();
