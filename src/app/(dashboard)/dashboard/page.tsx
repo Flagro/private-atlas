@@ -4,6 +4,11 @@ import { getCountriesWithVisitStatus, getCountryStats } from "@/features/places"
 import { VisitsDashboard } from "./visits-dashboard";
 import type { VisitWithRelations } from "@/types";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default async function DashboardPage() {
   const session = await auth();
