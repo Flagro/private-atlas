@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerSchema } from "@/lib/validations/auth";
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  /** Where to send the user after they sign in from the success screen. */
+  postLoginRedirect?: string;
+}
+
+export function RegisterForm({
+  postLoginRedirect = "/dashboard",
+}: RegisterFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +60,11 @@ export function RegisterForm() {
       return;
     }
 
-    router.push("/login?registered=1");
+    const loginQuery = new URLSearchParams({ registered: "1" });
+    if (postLoginRedirect && postLoginRedirect !== "/dashboard") {
+      loginQuery.set("callbackUrl", postLoginRedirect);
+    }
+    router.push(`/login?${loginQuery.toString()}`);
   }
 
   return (
