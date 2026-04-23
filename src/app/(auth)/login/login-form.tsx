@@ -6,16 +6,19 @@ interface LoginFormProps {
   showRegisteredMessage?: boolean;
   hasError?: boolean;
   hasOAuthError?: boolean;
+  /** Sanitized path after sign-in (see `sanitizePostLoginRedirect`). */
+  redirectTo?: string;
 }
 
 export function LoginForm({
   showRegisteredMessage,
   hasError,
   hasOAuthError,
+  redirectTo = "/dashboard",
 }: LoginFormProps) {
   return (
     <div className="space-y-6">
-      <OAuthButtons />
+      <OAuthButtons redirectTo={redirectTo} />
 
       <AuthDivider />
 
@@ -53,7 +56,7 @@ export function LoginForm({
           await signIn("credentials", {
             email: formData.get("email") as string,
             password: formData.get("password") as string,
-            redirectTo: "/dashboard",
+            redirectTo,
           });
         }}
       >
