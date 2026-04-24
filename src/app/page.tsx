@@ -15,7 +15,11 @@ export default async function HomePage() {
         aria-hidden
       />
 
-      <main className="relative flex max-w-2xl flex-col items-center gap-10 text-center">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="relative flex max-w-2xl flex-col items-center gap-10 text-center outline-none"
+      >
         <div className="space-y-4">
           <p className="text-5xl drop-shadow-sm" aria-hidden>
             🌍
