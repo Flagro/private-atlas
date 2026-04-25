@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import type { CountryOption, VisitWithRelations } from "@/types";
 import type { CountryStat, CityMarker } from "@/components/map/world-map";
@@ -95,9 +96,13 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
       {/* Visit list */}
       <div className="space-y-3">
         {filteredVisits.length === 0 ? (
-          <p className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
-            {highlightCode ? "No visits for this country." : "No visits logged yet."}
-          </p>
+          highlightCode ? (
+            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              No visits for this country.
+            </p>
+          ) : (
+            <MapPageEmptyState />
+          )
         ) : (
           filteredVisits.map((v) => {
             const flag = v.country ? countryCodeToFlag(v.country.code) : "🌍";
@@ -124,6 +129,31 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
             );
           })
         )}
+      </div>
+    </div>
+  );
+}
+
+function MapPageEmptyState() {
+  return (
+    <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-zinc-50/50 py-10 text-center dark:border-zinc-700 dark:bg-zinc-900/40 sm:py-12">
+      <p className="text-3xl" aria-hidden>
+        📍
+      </p>
+      <h2 className="mt-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+        No trips on the map yet
+      </h2>
+      <p className="mt-2 mx-auto max-w-md px-2 text-sm text-zinc-600 dark:text-zinc-400">
+        Log a visit from the dashboard—then countries and cities show up here.
+        Your data stays private to your account.
+      </p>
+      <div className="mt-5">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-teal-900/10 transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:hover:bg-teal-500 dark:focus:ring-offset-zinc-950"
+        >
+          Add your first visit
+        </Link>
       </div>
     </div>
   );
