@@ -499,20 +499,22 @@ function EmptyState({
     );
   }
   return (
-    <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-zinc-50/50 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
+    <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-zinc-50/50 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40 sm:py-16">
       <p className="text-4xl" aria-hidden>
         ✈️
       </p>
-      <p className="mt-3 text-zinc-600 dark:text-zinc-400">
-        No visits logged yet.
+      <h2 className="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+        Start your atlas
+      </h2>
+      <p className="mt-2 max-w-sm mx-auto text-sm text-zinc-600 dark:text-zinc-400">
+        Add a country or city to see it here and on the map. Only you can see
+        your log—it stays in your account.
       </p>
-      <button
-        type="button"
-        onClick={onAdd}
-        className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-teal-700 underline-offset-4 hover:underline dark:text-teal-400"
-      >
-        Log your first visit →
-      </button>
+      <div className="mt-6">
+        <Button variant="accent" size="md" onClick={onAdd}>
+          Add your first visit
+        </Button>
+      </div>
     </div>
   );
 }
