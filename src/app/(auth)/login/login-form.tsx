@@ -1,5 +1,6 @@
 import { signIn } from "@/auth";
 import { OAuthButtons, AuthDivider } from "@/components/auth/oauth-buttons";
+import { LoginCredentialFields } from "./login-credential-fields";
 import { LoginSubmitButton } from "./submit-button";
 
 interface LoginFormProps {
@@ -60,42 +61,7 @@ export function LoginForm({
           });
         }}
       >
-        <div className="space-y-2">
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-zinc-900 dark:text-zinc-100"
-          >
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-400"
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-zinc-900 dark:text-zinc-100"
-          >
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-900 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-400"
-            placeholder="••••••••"
-          />
-        </div>
-
+        <LoginCredentialFields />
         <LoginSubmitButton />
       </form>
     </div>
