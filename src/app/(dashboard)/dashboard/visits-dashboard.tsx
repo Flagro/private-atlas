@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { CountryOption, VisitWithRelations } from "@/types";
 import type { CountryStat, CityMarker } from "@/components/map/world-map";
@@ -393,6 +393,21 @@ function VisitCard({
   deleting: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const cancelConfirmRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!confirming) return;
+    cancelConfirmRef.current?.focus();
+  }, [confirming]);
+
+  useEffect(() => {
+    if (!confirming) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setConfirming(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirming]);
 
   const flag = visit.country ? countryCodeToFlag(visit.country.code) : "🌍";
   const place = [visit.country?.name, visit.city?.name]
@@ -433,17 +448,28 @@ function VisitCard({
 
       <div className="flex shrink-0 items-center gap-1">
         {confirming ? (
-          <>
-            <span className="mr-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Delete?
-            </span>
+          <div
+            role="group"
+            aria-labelledby={`delete-offer-${visit.id}`}
+            className="flex shrink-0 flex-wrap items-center justify-end gap-1.5"
+          >
+            <p
+              id={`delete-offer-${visit.id}`}
+              className="w-full basis-full text-xs text-zinc-600 dark:text-zinc-400 sm:w-auto sm:basis-auto sm:max-w-[10rem] sm:text-right md:max-w-none"
+              aria-live="polite"
+            >
+              Remove this visit?
+            </p>
             <button
+              ref={cancelConfirmRef}
+              type="button"
               onClick={handleCancel}
               className="rounded px-2 py-1 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleConfirm}
               disabled={deleting}
               className="rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-40 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40"
@@ -451,10 +477,10 @@ function VisitCard({
               {deleting ? (
                 <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : (
-                "Delete"
+                "Remove"
               )}
             </button>
-          </>
+          </div>
         ) : (
           <>
             <button
