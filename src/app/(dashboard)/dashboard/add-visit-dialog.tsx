@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CityOption, CountryOption, VisitWithRelations } from "@/types";
 import { todayAsDateString } from "@/lib/utils";
+import { useModalA11y } from "@/hooks/use-modal-a11y";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -22,6 +23,7 @@ export function AddVisitDialog({
   onClose,
   onAdd,
 }: AddVisitDialogProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const [countryId, setCountryId] = useState("");
   const [cityId, setCityId] = useState("");
   const [visitedAt, setVisitedAt] = useState(todayAsDateString());
@@ -71,6 +73,8 @@ export function AddVisitDialog({
     reset();
     onClose();
   }
+
+  useModalA11y(isOpen, handleClose, panelRef);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -135,7 +139,9 @@ export function AddVisitDialog({
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
       <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl shadow-zinc-900/20 ring-1 ring-zinc-900/5 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40 dark:ring-white/10"
+        ref={panelRef}
+        tabIndex={-1}
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl shadow-zinc-900/20 ring-1 ring-zinc-900/5 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40 dark:ring-white/10"
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-visit-title"
