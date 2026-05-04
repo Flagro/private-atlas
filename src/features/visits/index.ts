@@ -1,6 +1,13 @@
 // Phase 2: visits data access
 
 import { prisma } from "@/lib/db";
+import type { CreateVisitInput, UpdateVisitInput } from "@/lib/validations/visits";
+import { emitVisitEvent, buildVisitEvent } from "@/features/integrations";
+import {
+  DEFAULT_VISIT_PAGE_SIZE,
+  MAX_VISIT_PAGE_SIZE,
+} from "@/constants/visits";
+import type { CityMarker } from "@/components/map/world-map";
 
 /** Thrown when countryId / cityId are missing, unknown, or inconsistent. */
 export class InvalidVisitPlaceError extends Error {
@@ -9,13 +16,124 @@ export class InvalidVisitPlaceError extends Error {
     this.name = "InvalidVisitPlaceError";
   }
 }
-import type { CreateVisitInput, UpdateVisitInput } from "@/lib/validations/visits";
-import { emitVisitEvent, buildVisitEvent } from "@/features/integrations";
 
 const visitRelations = {
   country: { select: { id: true, name: true, code: true } },
   city: { select: { id: true, name: true, lat: true, lng: true } },
 } as const;
+
+export type VisitRollupTotals = {
+  countriesVisited: number;
+  citiesVisited: number;
+  visitsCount: number;
+};
+
+export type VisitGeoSummary = {
+  countryCodes: string[];
+  markers: CityMarker[];
+};
+
+export async function getVisitRollupTotals(userId: string): Promise<VisitRollupTotals> {
+  const [countryGb, cityGb, visitsCount] = await Promise.all([
+    prisma.visit.groupBy({
+      by: ["countryId"],
+      where: { userId, countryId: { not: null } },
+    }),
+    prisma.visit.groupBy({
+      by: ["cityId"],
+      where: { userId, cityId: { not: null } },
+    }),
+    prisma.visit.count({ where: { userId } }),
+  ]);
+
+  return {
+    countriesVisited: countryGb.filter((g) => g.countryId !== null).length,
+    citiesVisited: cityGb.filter((g) => g.cityId !== null).length,
+    visitsCount: visitsCount,
+  };
+}
+
+/** Full map overlays (distinct countries + deduped city pins) — independent of paginated list. */
+export async function getVisitGeoSummary(userId: string): Promise<VisitGeoSummary> {
+  const [countryCodesRows, markerRows] = await Promise.all([
+    prisma.visit.findMany({
+      where: { userId, countryId: { not: null } },
+      distinct: ["countryId"],
+      select: { country: { select: { code: true } } },
+    }),
+    prisma.visit.findMany({
+      where: {
+        userId,
+        cityId: { not: null },
+        city: { lat: { not: null }, lng: { not: null } },
+      },
+      select: {
+        country: { select: { name: true } },
+        city: { select: { name: true, lat: true, lng: true } },
+      },
+    }),
+  ]);
+
+  const countryCodes = countryCodesRows
+    .map((r) => r.country?.code)
+    .filter((c): c is string => Boolean(c));
+
+  const seen = new Set<string>();
+  const markers: CityMarker[] = [];
+  for (const r of markerRows) {
+    if (!r.country || r.city?.lat == null || r.city.lng == null) continue;
+    const key = `${r.city.lat},${r.city.lng}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    markers.push({
+      name: r.city.name,
+      countryName: r.country.name,
+      lat: r.city.lat,
+      lng: r.city.lng,
+    });
+  }
+
+  return { countryCodes, markers };
+}
+
+export async function findVisitsPage(
+  userId: string,
+  options?: {
+    countryId?: string | null;
+    limit?: number;
+    offset?: number;
+  }
+) {
+  const limit = Math.min(
+    Math.max(options?.limit ?? DEFAULT_VISIT_PAGE_SIZE, 1),
+    MAX_VISIT_PAGE_SIZE
+  );
+  const offset = Math.max(options?.offset ?? 0, 0);
+
+  const where = {
+    userId,
+    ...(options?.countryId ? { countryId: options.countryId } : {}),
+  };
+
+  const [total, visits] = await Promise.all([
+    prisma.visit.count({ where }),
+    prisma.visit.findMany({
+      where,
+      include: visitRelations,
+      orderBy: [{ visitedAt: "desc" }, { id: "desc" }],
+      skip: offset,
+      take: limit,
+    }),
+  ]);
+
+  return {
+    visits,
+    total,
+    limit,
+    offset,
+    hasMore: offset + visits.length < total,
+  };
+}
 
 /** Ensures city exists and matches country when both are set; fills country from city when omitted. */
 async function resolveCountryAndCityIds(
@@ -41,14 +159,6 @@ async function resolveCountryAndCityIds(
   return { countryId, cityId };
 }
 
-export async function getVisitsWithRelations(userId: string, countryId?: string) {
-  return prisma.visit.findMany({
-    where: { userId, ...(countryId ? { countryId } : {}) },
-    include: visitRelations,
-    orderBy: { visitedAt: "desc" },
-  });
-}
-
 export async function createVisit(userId: string, data: CreateVisitInput) {
   const resolved = await resolveCountryAndCityIds(
     data.countryId ?? null,
@@ -69,7 +179,6 @@ export async function createVisit(userId: string, data: CreateVisitInput) {
     include: visitRelations,
   });
 
-  // Fire-and-forget — never blocks the response
   void emitVisitEvent(
     buildVisitEvent("VisitCreated", {
       visitId: visit.id,
