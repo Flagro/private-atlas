@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import { ApiErrorCode, problemResponse } from "@/lib/api-errors";
 
 export type AuthenticatedUser = {
   id: string;
@@ -17,7 +18,10 @@ export async function requireAuth(): Promise<AuthResult> {
   if (!session?.user?.id) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      response: problemResponse(
+        { message: "Authentication required.", code: ApiErrorCode.UNAUTHORIZED },
+        401
+      ),
     };
   }
   return { ok: true, user: session.user as AuthenticatedUser };
