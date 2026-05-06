@@ -6,6 +6,8 @@ import {
   InvalidVisitPlaceError,
 } from "@/features/visits";
 import { updateVisitSchema } from "@/lib/validations/visits";
+import { ApiErrorCode, problemResponse } from "@/lib/api-errors";
+import { mapVisitDates } from "@/lib/serialize-visit";
 
 export async function PATCH(
   request: Request,
@@ -17,26 +19,39 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json().catch(() => null);
   if (!body) {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return problemResponse(
+      { message: "Request body must be valid JSON.", code: ApiErrorCode.INVALID_JSON },
+      400
+    );
   }
 
   const parsed = updateVisitSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
-      { status: 400 }
+    return problemResponse(
+      {
+        message: "Invalid input.",
+        code: ApiErrorCode.VALIDATION_FAILED,
+        details: parsed.error.flatten(),
+      },
+      400
     );
   }
 
   try {
     const visit = await updateVisit(id, auth.user.id, parsed.data);
     if (!visit) {
-      return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+      return problemResponse(
+        { message: "Visit not found.", code: ApiErrorCode.NOT_FOUND },
+        404
+      );
     }
-    return NextResponse.json(visit);
+    return NextResponse.json(mapVisitDates(visit));
   } catch (err) {
     if (err instanceof InvalidVisitPlaceError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
+      return problemResponse(
+        { message: err.message, code: ApiErrorCode.INVALID_VISIT_PLACE },
+        400
+      );
     }
     throw err;
   }
@@ -52,7 +67,10 @@ export async function DELETE(
   const { id } = await params;
   const deleted = await deleteVisit(id, auth.user.id);
   if (!deleted) {
-    return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+    return problemResponse(
+      { message: "Visit not found.", code: ApiErrorCode.NOT_FOUND },
+      404
+    );
   }
 
   return new NextResponse(null, { status: 204 });
