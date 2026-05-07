@@ -3,20 +3,28 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { hashPassword } from "@/lib/password";
 import { registerSchema } from "@/lib/validations/auth";
+import { ApiErrorCode, problemResponse } from "@/lib/api-errors";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     if (!body) {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+      return problemResponse(
+        { message: "Request body must be valid JSON.", code: ApiErrorCode.INVALID_JSON },
+        400
+      );
     }
 
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: parsed.error.flatten() },
-        { status: 400 }
+      return problemResponse(
+        {
+          message: "Invalid input.",
+          code: ApiErrorCode.VALIDATION_FAILED,
+          details: parsed.error.flatten(),
+        },
+        400
       );
     }
 
@@ -24,9 +32,12 @@ export async function POST(request: Request) {
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
+      return problemResponse(
+        {
+          message: "An account with this email already exists.",
+          code: ApiErrorCode.CONFLICT,
+        },
+        409
       );
     }
 
@@ -53,15 +64,18 @@ export async function POST(request: Request) {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
+      return problemResponse(
+        {
+          message: "An account with this email already exists.",
+          code: ApiErrorCode.CONFLICT,
+        },
+        409
       );
     }
     console.error("Registration error:", error);
-    return NextResponse.json(
-      { error: "Something went wrong" },
-      { status: 500 }
+    return problemResponse(
+      { message: "Something went wrong.", code: ApiErrorCode.INTERNAL },
+      500
     );
   }
 }
