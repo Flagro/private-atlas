@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { getCitiesByCountry } from "@/features/places";
+import { ApiErrorCode, problemResponse } from "@/lib/api-errors";
 
 export async function GET(request: Request) {
   const auth = await requireAuth();
@@ -9,9 +10,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const countryId = searchParams.get("countryId")?.trim();
   if (!countryId) {
-    return NextResponse.json(
-      { error: "Query parameter countryId is required" },
-      { status: 400 }
+    return problemResponse(
+      {
+        message: "Query parameter countryId is required.",
+        code: ApiErrorCode.MISSING_QUERY,
+      },
+      400
     );
   }
 
