@@ -2,10 +2,15 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { CountryOption, VisitWithRelations } from "@/types";
-import type { CountryStat, CityMarker } from "@/components/map/world-map";
+import type { VisitsMeta } from "@/types/visits";
+import type { VisitGeoSummary, VisitRollupTotals } from "@/features/visits";
+import type { CountryStat } from "@/components/map/world-map";
 import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { fetchVisitsList, refetchVisitAggregates } from "../visit-queries";
+import { useToast } from "@/components/providers/toast-provider";
 
 const WorldMap = dynamic(
   () => import("@/components/map/world-map").then((m) => m.WorldMap),
@@ -13,44 +18,91 @@ const WorldMap = dynamic(
 );
 
 interface MapViewProps {
-  visits: VisitWithRelations[];
+  initialVisits: VisitWithRelations[];
+  visitsPageSize: number;
+  initialMeta: VisitsMeta;
+  initialGeo: VisitGeoSummary;
+  initialRollup: VisitRollupTotals;
   countries: CountryOption[];
   countryStats: CountryStat[];
 }
 
-export function MapView({ visits, countries, countryStats }: MapViewProps) {
+export function MapView({
+  initialVisits,
+  visitsPageSize,
+  initialMeta,
+  initialGeo,
+  initialRollup,
+  countries,
+  countryStats,
+}: MapViewProps) {
+  const [visits, setVisits] = useState(initialVisits);
+  const [visitsMeta, setVisitsMeta] = useState<VisitsMeta>(initialMeta);
+  const [rollup, setRollup] = useState(initialRollup);
+  const [geo, setGeo] = useState<VisitGeoSummary>(initialGeo);
+  const [countriesCatalog, setCountriesCatalog] =
+    useState<CountryOption[]>(countries);
+  const [countryStatsLocal, setCountryStatsLocal] =
+    useState<CountryStat[]>(countryStats);
+
   const [highlightCode, setHighlightCode] = useState<string | null>(null);
+  const [listLoadingMore, setListLoadingMore] = useState(false);
+
+  const { toast } = useToast();
 
   const visitedCodes = useMemo(
-    () => new Set(visits.filter((v) => v.country).map((v) => v.country!.code)),
-    [visits]
+    () => new Set(geo.countryCodes),
+    [geo.countryCodes]
   );
-
-  const cityMarkers = useMemo<CityMarker[]>(() => {
-    const seen = new Set<string>();
-    const markers: CityMarker[] = [];
-    for (const v of visits) {
-      if (v.city?.lat == null || v.city?.lng == null || !v.country) continue;
-      const key = `${v.city.lat},${v.city.lng}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      markers.push({
-        name: v.city.name,
-        countryName: v.country.name,
-        lat: v.city.lat,
-        lng: v.city.lng,
-      });
-    }
-    return markers;
-  }, [visits]);
 
   const filteredVisits = highlightCode
     ? visits.filter((v) => v.country?.code === highlightCode)
     : visits;
 
   const highlightedCountry = highlightCode
-    ? countries.find((c) => c.code === highlightCode)
+    ? countriesCatalog.find((c) => c.code === highlightCode)
     : null;
+
+  const reloadFromServer = useCallback(async () => {
+    const agg = await refetchVisitAggregates();
+    if (!agg.ok) {
+      toast(agg.message, "error");
+      return;
+    }
+    setRollup(agg.snapshot.totals);
+    setGeo(agg.snapshot.geo);
+    setCountryStatsLocal(agg.snapshot.countryStats);
+    setCountriesCatalog(agg.snapshot.countries);
+    const r = await fetchVisitsList({
+      offset: 0,
+      limit: visitsPageSize,
+    });
+    if (!r.ok) {
+      toast(r.message, "error");
+      return;
+    }
+    setVisits(r.data.visits);
+    setVisitsMeta(r.data.meta);
+  }, [toast, visitsPageSize]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!visitsMeta.hasMore || listLoadingMore)
+      return;
+    setListLoadingMore(true);
+    const r = await fetchVisitsList({
+      offset: visits.length,
+      limit: visitsMeta.limit,
+    });
+    setListLoadingMore(false);
+    if (!r.ok) {
+      toast(r.message, "error");
+      return;
+    }
+    const seen = new Set(visits.map((v) => v.id));
+    const appended = r.data.visits.filter((v) => !seen.has(v.id));
+    setVisits((prev) => [...prev, ...appended]);
+    setVisitsMeta(r.data.meta);
+  }, [listLoadingMore, toast, visits, visitsMeta.hasMore, visitsMeta.limit]);
 
   return (
     <div className="space-y-8">
@@ -64,20 +116,18 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
         </p>
       </header>
 
-      {/* Map */}
       <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-lg shadow-zinc-900/5 ring-1 ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20 dark:ring-white/5">
         <WorldMap
           visitedCodes={visitedCodes}
-          countryStats={countryStats}
-          cityMarkers={cityMarkers}
+          countryStats={countryStatsLocal}
+          cityMarkers={geo.markers}
           highlightCode={highlightCode ?? undefined}
           onCountryClick={setHighlightCode}
         />
       </div>
 
-      {/* Filter indicator */}
       {highlightedCountry && (
-        <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <span>
             Showing visits for{" "}
             <span className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -85,23 +135,49 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
             </span>
           </span>
           <button
+            type="button"
             onClick={() => setHighlightCode(null)}
             className="ml-1 rounded px-1.5 py-0.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
           >
             Clear ×
           </button>
+          {rollup.visitsCount > visits.length &&
+            filteredVisits.length === 0 &&
+            highlightCode && (
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                More trips aren&apos;t on this page yet—tap{" "}
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                  Load more
+                </span>{" "}
+                below.
+              </span>
+            )}
         </div>
       )}
 
-      {/* Visit list */}
       <div className="space-y-3">
         {filteredVisits.length === 0 ? (
-          highlightCode ? (
+          rollup.visitsCount === 0 ? (
+            <MapPageEmptyState />
+          ) : highlightCode ? (
             <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-              No visits for this country.
+              No loaded visits for this country.
+              {visitsMeta.hasMore
+                ? " Try loading more visits below."
+                : ""}
             </p>
           ) : (
-            <MapPageEmptyState />
+            <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              Visits couldn&apos;t be loaded yet. Tap{" "}
+              <button
+                type="button"
+                onClick={() => void reloadFromServer()}
+                className="font-semibold text-teal-700 underline-offset-4 hover:underline dark:text-teal-400"
+              >
+                Refresh
+              </button>{" "}
+              or return to your dashboard.
+            </p>
           )
         ) : (
           filteredVisits.map((v) => {
@@ -130,6 +206,33 @@ export function MapView({ visits, countries, countryStats }: MapViewProps) {
           })
         )}
       </div>
+
+      {(rollup.visitsCount > 0 || visitsMeta.hasMore) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-5 dark:border-zinc-800/80">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            {rollup.visitsCount > 0
+              ? `Showing ${visits.length} of ${rollup.visitsCount} visit${rollup.visitsCount === 1 ? "" : "s"} (newest first).`
+              : null}{" "}
+            <button
+              type="button"
+              onClick={() => void reloadFromServer()}
+              className="font-medium text-teal-700 underline-offset-4 hover:underline dark:text-teal-400"
+            >
+              Refresh
+            </button>{" "}
+            reloads summaries and this list from your account.
+          </p>
+          {visitsMeta.hasMore ? (
+            <Button
+              variant="secondary"
+              loading={listLoadingMore}
+              onClick={() => void handleLoadMore()}
+            >
+              Load more visits
+            </Button>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
