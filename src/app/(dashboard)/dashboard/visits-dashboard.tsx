@@ -1,14 +1,27 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import dynamic from "next/dynamic";
 import type { CountryOption, VisitWithRelations } from "@/types";
-import type { CountryStat, CityMarker } from "@/components/map/world-map";
+import type { VisitsMeta } from "@/types/visits";
+import type {
+  VisitGeoSummary,
+  VisitRollupTotals,
+} from "@/features/visits";
+import type { CountryStat } from "@/components/map/world-map";
 import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
 import { AddVisitDialog } from "./add-visit-dialog";
 import { EditVisitDialog } from "./edit-visit-dialog";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
+import { fallbackMessage } from "@/lib/api-errors";
+import { fetchVisitsList, refetchVisitAggregates } from "./visit-queries";
 
 const WorldMap = dynamic(
   () => import("@/components/map/world-map").then((m) => m.WorldMap),
@@ -19,20 +32,35 @@ type View = "list" | "map";
 
 interface VisitsDashboardProps {
   initialVisits: VisitWithRelations[];
+  visitsPageSize: number;
+  initialMeta: VisitsMeta;
+  initialTotals: VisitRollupTotals;
+  initialGeo: VisitGeoSummary;
   countries: CountryOption[];
   countryStats: CountryStat[];
 }
 
 export function VisitsDashboard({
   initialVisits,
-  countries,
+  visitsPageSize,
+  initialMeta,
+  initialTotals,
+  initialGeo,
+  countries: countriesInitial,
   countryStats: initialStats,
 }: VisitsDashboardProps) {
   const [visits, setVisits] = useState<VisitWithRelations[]>(initialVisits);
+  const [visitsMeta, setVisitsMeta] = useState<VisitsMeta>(initialMeta);
+  const [rollup, setRollup] = useState<VisitRollupTotals>(initialTotals);
+  const [geo, setGeo] = useState<VisitGeoSummary>(initialGeo);
+  const [countriesCatalog, setCountriesCatalog] =
+    useState<CountryOption[]>(countriesInitial);
+
   const [filterCountryId, setFilterCountryId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [editingVisit, setEditingVisit] = useState<VisitWithRelations | null>(null);
+  const [editingVisit, setEditingVisit] =
+    useState<VisitWithRelations | null>(null);
   const [view, setView] = useState<View>(() => {
     if (typeof window === "undefined") return "list";
     const saved = localStorage.getItem("atlas-view");
@@ -41,115 +69,149 @@ export function VisitsDashboard({
   const [mapFilterCode, setMapFilterCode] = useState<string | null>(null);
   const [countryStats, setCountryStats] =
     useState<CountryStat[]>(initialStats);
+
+  const [filterListLoading, setFilterListLoading] = useState(false);
+  const [listLoadingMore, setListLoadingMore] = useState(false);
+
   const { toast } = useToast();
 
-  // Persist view preference
   useEffect(() => {
     localStorage.setItem("atlas-view", view);
   }, [view]);
 
-  const countriesVisited = useMemo(
-    () => new Set(visits.filter((v) => v.countryId).map((v) => v.countryId)).size,
-    [visits]
-  );
-  const citiesVisited = useMemo(
-    () => new Set(visits.filter((v) => v.cityId).map((v) => v.cityId)).size,
-    [visits]
-  );
-
-  const visitedCountryIds = useMemo(
-    () => new Set(visits.map((v) => v.countryId).filter(Boolean)),
-    [visits]
-  );
-  const visitedCountries = useMemo(
-    () => countries.filter((c) => visitedCountryIds.has(c.id)),
-    [countries, visitedCountryIds]
+  const visitedCountryOptions = useMemo(
+    () => countriesCatalog.filter((c) => c.visited),
+    [countriesCatalog]
   );
 
   const effectiveFilterId =
-    filterCountryId && visitedCountryIds.has(filterCountryId)
+    filterCountryId &&
+    visitedCountryOptions.some((c) => c.id === filterCountryId)
       ? filterCountryId
       : "";
 
-  const filtered = useMemo(
-    () =>
-      effectiveFilterId
-        ? visits.filter((v) => v.countryId === effectiveFilterId)
-        : visits,
-    [visits, effectiveFilterId]
-  );
+  const resolveCountryQueryId = useCallback(() => effectiveFilterId, [effectiveFilterId]);
 
-  // Map-specific derived data
-  const visitedCodes = useMemo(
-    () => new Set(visits.filter((v) => v.country).map((v) => v.country!.code)),
-    [visits]
-  );
-
-  const cityMarkers = useMemo<CityMarker[]>(() => {
-    const seen = new Set<string>();
-    const markers: CityMarker[] = [];
-    for (const v of visits) {
-      if (v.city?.lat == null || v.city?.lng == null || !v.country) continue;
-      const key = `${v.city.lat},${v.city.lng}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      markers.push({
-        name: v.city.name,
-        countryName: v.country.name,
-        lat: v.city.lat,
-        lng: v.city.lng,
+  const reloadVisitsReplace = useCallback(
+    async (countryIdOpt?: string) => {
+      setFilterListLoading(true);
+      const r = await fetchVisitsList({
+        offset: 0,
+        limit: visitsPageSize,
+        countryId: countryIdOpt,
       });
+      setFilterListLoading(false);
+      if (!r.ok) {
+        toast(r.message, "error");
+        return false;
+      }
+      setVisits(r.data.visits);
+      setVisitsMeta(r.data.meta);
+      return true;
+    },
+    [toast, visitsPageSize]
+  );
+
+  const applyCountryFilter = useCallback(
+    async (raw: string) => {
+      setFilterCountryId(raw);
+      const next =
+        raw && visitedCountryOptions.some((c) => c.id === raw) ? raw : undefined;
+      await reloadVisitsReplace(next);
+    },
+    [reloadVisitsReplace, visitedCountryOptions]
+  );
+
+  const afterVisitMutation = useCallback(async () => {
+    const agg = await refetchVisitAggregates();
+    if (!agg.ok) {
+      toast(agg.message, "error");
+      return;
     }
-    return markers;
-  }, [visits]);
+
+    const { totals, geo: geoNext, countryStats: statsNext, countries: cNext } =
+      agg.snapshot;
+    setRollup(totals);
+    setGeo(geoNext);
+    setCountryStats(statsNext);
+    setCountriesCatalog(cNext);
+
+    const visitedOpts = cNext.filter((c) => c.visited);
+    const cid =
+      filterCountryId && visitedOpts.some((c) => c.id === filterCountryId)
+        ? filterCountryId
+        : undefined;
+
+    await fetchVisitsList({
+      offset: 0,
+      limit: visitsPageSize,
+      countryId: cid,
+    }).then((r) => {
+      if (r.ok) {
+        setVisits(r.data.visits);
+        setVisitsMeta(r.data.meta);
+      }
+    });
+  }, [filterCountryId, toast, visitsPageSize]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!visitsMeta.hasMore || listLoadingMore || filterListLoading)
+      return;
+    setListLoadingMore(true);
+    const countryIdOpt = resolveCountryQueryId();
+    const r = await fetchVisitsList({
+      offset: visits.length,
+      limit: visitsMeta.limit,
+      ...(countryIdOpt ? { countryId: countryIdOpt } : {}),
+    });
+    setListLoadingMore(false);
+    if (!r.ok) {
+      toast(r.message, "error");
+      return;
+    }
+    const seen = new Set(visits.map((v) => v.id));
+    const appended = r.data.visits.filter((v) => !seen.has(v.id));
+    setVisits((prev) => [...prev, ...appended]);
+    setVisitsMeta(r.data.meta);
+  }, [
+    filterListLoading,
+    listLoadingMore,
+    visits.length,
+    visitsMeta.hasMore,
+    visitsMeta.limit,
+    resolveCountryQueryId,
+    toast,
+  ]);
+
+  const visitedCodes = useMemo(() => new Set(geo.countryCodes), [geo.countryCodes]);
+  const cityMarkers = geo.markers;
 
   const mapFilteredVisits = mapFilterCode
     ? visits.filter((v) => v.country?.code === mapFilterCode)
     : visits;
 
-  function refreshStats(updatedVisits: VisitWithRelations[]) {
-    const statsMap = new Map<string, { visitCount: number; lastVisited: string }>();
-    for (const v of updatedVisits) {
-      const code = v.country?.code;
-      if (!code) continue;
-      const existing = statsMap.get(code);
-      if (!existing) {
-        statsMap.set(code, { visitCount: 1, lastVisited: v.visitedAt });
-      } else {
-        existing.visitCount += 1;
-        if (v.visitedAt > existing.lastVisited) {
-          existing.lastVisited = v.visitedAt;
-        }
-      }
-    }
-    setCountryStats(
-      Array.from(statsMap.entries()).map(([code, s]) => ({
-        code,
-        visitCount: s.visitCount,
-        lastVisited: s.lastVisited,
-      }))
-    );
-  }
+  const emptyFilterHasGlobeVisits = effectiveFilterId
+    ? visitsMeta.total > 0
+    : rollup.visitsCount > 0;
 
-  function handleAdd(visit: VisitWithRelations) {
-    const updated = [visit, ...visits];
-    setVisits(updated);
-    refreshStats(updated);
+  async function handleAdd(_visit: VisitWithRelations) {
     toast("Visit added!", "success");
+    await afterVisitMutation();
   }
 
-  function handleEdit(updated: VisitWithRelations) {
-    const next = visits.map((v) => (v.id === updated.id ? updated : v));
-    setVisits(next);
-    refreshStats(next);
+  async function handleEdit(_updated: VisitWithRelations) {
     toast("Visit updated!", "success");
+    await afterVisitMutation();
   }
 
   async function handleDelete(id: string) {
     setDeletingIds((prev) => new Set([...prev, id]));
     let res: Response;
     try {
-      res = await fetch(`/api/visits/${id}`, { method: "DELETE" });
+      res = await fetch(`/api/visits/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
     } catch {
       setDeletingIds((prev) => {
         const next = new Set(prev);
@@ -164,13 +226,14 @@ export function VisitsDashboard({
       next.delete(id);
       return next;
     });
+
     if (!res.ok) {
-      toast("Failed to delete visit. Please try again.", "error");
+      const body = await res.json().catch(() => null);
+      toast(fallbackMessage(body, "Could not remove visit."), "error");
       return;
     }
-    const updated = visits.filter((v) => v.id !== id);
-    setVisits(updated);
-    refreshStats(updated);
+
+    await afterVisitMutation();
   }
 
   return (
@@ -188,12 +251,12 @@ export function VisitsDashboard({
       {/* Stats */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatCard
-          value={countriesVisited}
+          value={rollup.countriesVisited}
           label="Countries"
           tone="teal"
         />
-        <StatCard value={citiesVisited} label="Cities" tone="sky" />
-        <StatCard value={visits.length} label="Visits" tone="violet" />
+        <StatCard value={rollup.citiesVisited} label="Cities" tone="sky" />
+        <StatCard value={rollup.visitsCount} label="Visits" tone="violet" />
       </div>
 
       {/* View toggle */}
@@ -218,11 +281,12 @@ export function VisitsDashboard({
             <select
               id="country-filter"
               value={effectiveFilterId}
-              onChange={(e) => setFilterCountryId(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition-shadow focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+              disabled={filterListLoading}
+              onChange={(e) => void applyCountryFilter(e.target.value)}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition-shadow focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
             >
               <option value="">All countries</option>
-              {visitedCountries.map((c) => (
+              {visitedCountryOptions.map((c) => (
                 <option key={c.id} value={c.id}>
                   {countryCodeToFlag(c.code)} {c.name}
                 </option>
@@ -250,28 +314,42 @@ export function VisitsDashboard({
           </div>
 
           {mapFilterCode && (
-            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
               <span>
                 Filtered by{" "}
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">
                   {(() => {
-                    const c = countries.find((c) => c.code === mapFilterCode);
+                    const c = countriesCatalog.find((c) => c.code === mapFilterCode);
                     return c ? `${countryCodeToFlag(c.code)} ${c.name}` : mapFilterCode;
                   })()}
                 </span>
               </span>
               <button
+                type="button"
                 onClick={() => setMapFilterCode(null)}
                 className="ml-1 rounded px-1.5 py-0.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
               >
                 Clear ×
               </button>
+              {rollup.visitsCount > visits.length &&
+                mapFilteredVisits.length === 0 && (
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    More visits aren&apos;t shown on this page—use list view or{" "}
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      Load more
+                    </span>{" "}
+                    below.
+                  </span>
+                )}
             </div>
           )}
 
           <div className="space-y-3">
             {mapFilteredVisits.length === 0 ? (
-              <EmptyState hasVisits={visits.length > 0} onAdd={() => setDialogOpen(true)} />
+              <EmptyState
+                hasVisits={emptyFilterHasGlobeVisits}
+                onAdd={() => setDialogOpen(true)}
+              />
             ) : (
               mapFilteredVisits.map((visit) => (
                 <VisitCard
@@ -284,41 +362,66 @@ export function VisitsDashboard({
               ))
             )}
           </div>
+
+          {visitsMeta.hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="secondary"
+                loading={listLoadingMore}
+                onClick={() => void handleLoadMore()}
+              >
+                Load more visits
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       {/* List view */}
       {view === "list" && (
-        <div className="mt-4 space-y-3">
-          {filtered.length === 0 ? (
-            <EmptyState
-              hasVisits={visits.length > 0}
-              onAdd={() => setDialogOpen(true)}
-            />
-          ) : (
-            filtered.map((visit) => (
-              <VisitCard
-                key={visit.id}
-                visit={visit}
-                onDelete={handleDelete}
-                onEdit={setEditingVisit}
-                deleting={deletingIds.has(visit.id)}
+        <>
+          <div className="mt-4 space-y-3">
+            {visits.length === 0 ? (
+              <EmptyState
+                hasVisits={emptyFilterHasGlobeVisits}
+                onAdd={() => setDialogOpen(true)}
               />
-            ))
+            ) : (
+              visits.map((visit) => (
+                <VisitCard
+                  key={visit.id}
+                  visit={visit}
+                  onDelete={handleDelete}
+                  onEdit={setEditingVisit}
+                  deleting={deletingIds.has(visit.id)}
+                />
+              ))
+            )}
+          </div>
+          {visitsMeta.hasMore && visits.length > 0 && (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="secondary"
+                loading={listLoadingMore}
+                onClick={() => void handleLoadMore()}
+              >
+                Load more visits
+              </Button>
+            </div>
           )}
-        </div>
+        </>
       )}
 
       <AddVisitDialog
         isOpen={dialogOpen}
-        countries={countries}
+        countries={countriesCatalog}
         onClose={() => setDialogOpen(false)}
         onAdd={handleAdd}
       />
 
       <EditVisitDialog
         visit={editingVisit}
-        countries={countries}
+        countries={countriesCatalog}
         onClose={() => setEditingVisit(null)}
         onEdit={handleEdit}
       />
@@ -484,6 +587,7 @@ function VisitCard({
         ) : (
           <>
             <button
+              type="button"
               onClick={() => onEdit(visit)}
               aria-label="Edit visit"
               className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
@@ -491,6 +595,7 @@ function VisitCard({
               <PencilIcon />
             </button>
             <button
+              type="button"
               onClick={handleDeleteClick}
               disabled={deleting}
               aria-label="Delete visit"
@@ -516,10 +621,10 @@ function EmptyState({
     return (
       <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/80 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          No visits match this filter.
+          No visits match this filter on the loaded pages.
         </p>
         <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-          Try choosing &quot;All countries&quot; or another destination.
+          Try &quot;All countries&quot;, load more, or choose another destination.
         </p>
       </div>
     );
