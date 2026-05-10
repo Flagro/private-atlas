@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { fallbackMessage } from "@/lib/api-errors";
 
 interface EditVisitDialogProps {
   visit: VisitWithRelations | null;
@@ -58,11 +59,22 @@ export function EditVisitDialog({
       signal: controller.signal,
     })
       .then(async (r) => {
-        if (!r.ok) { setCities([]); return; }
+        if (!r.ok) {
+          const raw = await r.json().catch(() => null);
+          setError(fallbackMessage(raw, "Could not load cities for this country."));
+          setCities([]);
+          return;
+        }
         const data: unknown = await r.json();
         setCities(Array.isArray(data) ? (data as CityOption[]) : []);
+        setError(null);
       })
-      .catch((e) => { if (e.name !== "AbortError") setCities([]); })
+      .catch((e) => {
+        if (e.name !== "AbortError") {
+          setCities([]);
+          setError("Could not load cities.");
+        }
+      })
       .finally(() => setLoadingCities(false));
 
     return () => controller.abort();
@@ -108,7 +120,7 @@ export function EditVisitDialog({
     setSubmitting(false);
 
     if (!res.ok) {
-      setError((data as { error?: string }).error ?? "Something went wrong");
+      setError(fallbackMessage(data, "Something went wrong"));
       return;
     }
 
