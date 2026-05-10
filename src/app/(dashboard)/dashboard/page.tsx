@@ -1,10 +1,16 @@
 import { auth } from "@/auth";
-import { getVisitsWithRelations } from "@/features/visits";
+import {
+  findVisitsPage,
+  getVisitRollupTotals,
+  getVisitGeoSummary,
+} from "@/features/visits";
 import { getCountriesWithVisitStatus, getCountryStats } from "@/features/places";
 import { VisitsDashboard } from "./visits-dashboard";
 import type { VisitWithRelations } from "@/types";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { mapVisitDates } from "@/lib/serialize-visit";
+import { DEFAULT_VISIT_PAGE_SIZE } from "@/constants/visits";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -13,25 +19,41 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session?.user?.id;
-  if (!userId) redirect("/login");
+  if (!userId)
+    redirect("/login");
 
-  const [rawVisits, countries, countryStats] = await Promise.all([
-    getVisitsWithRelations(userId),
+  const [
+    visitsPage,
+    totals,
+    geo,
+    countries,
+    countryStats,
+  ] = await Promise.all([
+    findVisitsPage(userId, { limit: DEFAULT_VISIT_PAGE_SIZE, offset: 0 }),
+    getVisitRollupTotals(userId),
+    getVisitGeoSummary(userId),
     getCountriesWithVisitStatus(userId),
     getCountryStats(userId),
   ]);
 
-  // Serialize Prisma Date objects to ISO strings before passing to client component
-  const visits: VisitWithRelations[] = rawVisits.map((v) => ({
-    ...v,
-    visitedAt: v.visitedAt.toISOString(),
-    createdAt: v.createdAt.toISOString(),
-    updatedAt: v.updatedAt.toISOString(),
-  }));
+  const visits: VisitWithRelations[] = visitsPage.visits.map((v) =>
+    mapVisitDates(v) as VisitWithRelations
+  );
+
+  const initialMeta = {
+    total: visitsPage.total,
+    limit: visitsPage.limit,
+    offset: visitsPage.offset,
+    hasMore: visitsPage.hasMore,
+  };
 
   return (
     <VisitsDashboard
       initialVisits={visits}
+      visitsPageSize={visitsPage.limit}
+      initialMeta={initialMeta}
+      initialTotals={totals}
+      initialGeo={geo}
       countries={countries}
       countryStats={countryStats}
     />
