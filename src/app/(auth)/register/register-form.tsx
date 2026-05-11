@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerSchema } from "@/lib/validations/auth";
+import { fallbackMessage } from "@/lib/api-errors";
 
 interface RegisterFormProps {
   /** Where to send the user after they sign in from the success screen. */
@@ -56,7 +57,7 @@ export function RegisterForm({
     setIsSubmitting(false);
 
     if (!res.ok) {
-      setError(data.error ?? "Something went wrong");
+      setError(fallbackMessage(data, "Something went wrong"));
       return;
     }
 
