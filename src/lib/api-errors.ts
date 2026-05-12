@@ -11,6 +11,7 @@ export const ApiErrorCode = {
   INTERNAL: "INTERNAL",
   MISSING_QUERY: "MISSING_QUERY",
   UNKNOWN: "UNKNOWN",
+  RATE_LIMITED: "RATE_LIMITED",
 } as const;
 
 export type ApiErrorCodeType = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
@@ -40,4 +41,26 @@ export function messageFromUnknownApiBody(body: unknown): string | null {
 
 export function fallbackMessage(body: unknown, fallback = "Something went wrong") {
   return messageFromUnknownApiBody(body) ?? fallback;
+}
+
+/** 500 handlers: never expose stack/ORM details in production. Always log server-side. */
+export function problemUnexpected(
+  err: unknown,
+  logLabel = "unexpected"
+): ReturnType<typeof problemResponse> {
+  console.error(`[api] ${logLabel}:`, err);
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd) {
+    return problemResponse(
+      {
+        message:
+          "Something went wrong on our side. Please try again in a moment.",
+        code: ApiErrorCode.INTERNAL,
+      },
+      500
+    );
+  }
+  const detail =
+    err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error";
+  return problemResponse({ message: detail, code: ApiErrorCode.INTERNAL }, 500);
 }
