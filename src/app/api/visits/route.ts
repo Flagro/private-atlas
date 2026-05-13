@@ -9,43 +9,48 @@ import { createVisitSchema } from "@/lib/validations/visits";
 import {
   ApiErrorCode,
   problemResponse,
+  problemUnexpected,
 } from "@/lib/api-errors";
 import { DEFAULT_VISIT_PAGE_SIZE, MAX_VISIT_PAGE_SIZE } from "@/constants/visits";
 import { mapVisitDates } from "@/lib/serialize-visit";
 
 export async function GET(request: Request) {
-  const auth = await requireAuth();
-  if (!auth.ok) return auth.response;
+  try {
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.response;
 
-  const { searchParams } = new URL(request.url);
-  const countryId = searchParams.get("countryId")?.trim() || undefined;
+    const { searchParams } = new URL(request.url);
+    const countryId = searchParams.get("countryId")?.trim() || undefined;
 
-  let limit =
-    Number.parseInt(searchParams.get("limit") ?? `${DEFAULT_VISIT_PAGE_SIZE}`, 10);
-  let offset =
-    Number.parseInt(searchParams.get("offset") ?? "0", 10);
-  if (Number.isNaN(limit))
-    limit = DEFAULT_VISIT_PAGE_SIZE;
-  if (Number.isNaN(offset))
-    offset = 0;
-  limit = Math.min(Math.max(limit, 1), MAX_VISIT_PAGE_SIZE);
-  offset = Math.max(offset, 0);
+    let limit =
+      Number.parseInt(searchParams.get("limit") ?? `${DEFAULT_VISIT_PAGE_SIZE}`, 10);
+    let offset =
+      Number.parseInt(searchParams.get("offset") ?? "0", 10);
+    if (Number.isNaN(limit))
+      limit = DEFAULT_VISIT_PAGE_SIZE;
+    if (Number.isNaN(offset))
+      offset = 0;
+    limit = Math.min(Math.max(limit, 1), MAX_VISIT_PAGE_SIZE);
+    offset = Math.max(offset, 0);
 
-  const page = await findVisitsPage(auth.user.id, {
-    countryId,
-    limit,
-    offset,
-  });
+    const page = await findVisitsPage(auth.user.id, {
+      countryId,
+      limit,
+      offset,
+    });
 
-  return NextResponse.json({
-    visits: page.visits.map(mapVisitDates),
-    meta: {
-      total: page.total,
-      limit: page.limit,
-      offset: page.offset,
-      hasMore: page.hasMore,
-    },
-  });
+    return NextResponse.json({
+      visits: page.visits.map(mapVisitDates),
+      meta: {
+        total: page.total,
+        limit: page.limit,
+        offset: page.offset,
+        hasMore: page.hasMore,
+      },
+    });
+  } catch (err) {
+    return problemUnexpected(err, "GET /api/visits");
+  }
 }
 
 export async function POST(request: Request) {
@@ -82,6 +87,6 @@ export async function POST(request: Request) {
         400
       );
     }
-    throw err;
+    return problemUnexpected(err, "POST /api/visits");
   }
 }
