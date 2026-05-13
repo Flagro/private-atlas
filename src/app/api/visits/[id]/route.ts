@@ -6,7 +6,11 @@ import {
   InvalidVisitPlaceError,
 } from "@/features/visits";
 import { updateVisitSchema } from "@/lib/validations/visits";
-import { ApiErrorCode, problemResponse } from "@/lib/api-errors";
+import {
+  ApiErrorCode,
+  problemResponse,
+  problemUnexpected,
+} from "@/lib/api-errors";
 import { mapVisitDates } from "@/lib/serialize-visit";
 
 export async function PATCH(
@@ -53,7 +57,7 @@ export async function PATCH(
         400
       );
     }
-    throw err;
+    return problemUnexpected(err, "PATCH /api/visits/[id]");
   }
 }
 
@@ -61,17 +65,21 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth();
-  if (!auth.ok) return auth.response;
+  try {
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.response;
 
-  const { id } = await params;
-  const deleted = await deleteVisit(id, auth.user.id);
-  if (!deleted) {
-    return problemResponse(
-      { message: "Visit not found.", code: ApiErrorCode.NOT_FOUND },
-      404
-    );
+    const { id } = await params;
+    const deleted = await deleteVisit(id, auth.user.id);
+    if (!deleted) {
+      return problemResponse(
+        { message: "Visit not found.", code: ApiErrorCode.NOT_FOUND },
+        404
+      );
+    }
+
+    return new NextResponse(null, { status: 204 });
+  } catch (err) {
+    return problemUnexpected(err, "DELETE /api/visits/[id]");
   }
-
-  return new NextResponse(null, { status: 204 });
 }
