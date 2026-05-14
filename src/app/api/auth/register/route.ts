@@ -3,7 +3,11 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { hashPassword } from "@/lib/password";
 import { registerSchema } from "@/lib/validations/auth";
-import { ApiErrorCode, problemResponse } from "@/lib/api-errors";
+import {
+  ApiErrorCode,
+  problemResponse,
+  problemUnexpected,
+} from "@/lib/api-errors";
 
 export async function POST(request: Request) {
   try {
@@ -72,10 +76,6 @@ export async function POST(request: Request) {
         409
       );
     }
-    console.error("Registration error:", error);
-    return problemResponse(
-      { message: "Something went wrong.", code: ApiErrorCode.INTERNAL },
-      500
-    );
+    return problemUnexpected(error, "POST /api/auth/register");
   }
 }
