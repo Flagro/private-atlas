@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { enforceAuthApiRateLimit } from "@/lib/rate-limit-edge";
 
 export default auth((req) => {
+  const limited = enforceAuthApiRateLimit(req as NextRequest);
+  if (limited) return limited;
+
   const isLoggedIn = !!req.auth;
   const isAuthPage =
     req.nextUrl.pathname.startsWith("/login") ||
@@ -26,5 +31,10 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/register"],
+  matcher: [
+    "/dashboard/:path*",
+    "/login",
+    "/register",
+    "/api/auth/:path*",
+  ],
 };
