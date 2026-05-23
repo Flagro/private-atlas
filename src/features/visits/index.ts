@@ -5,6 +5,7 @@ import type { CreateVisitInput, UpdateVisitInput } from "@/lib/validations/visit
 import { emitVisitEvent, buildVisitEvent } from "@/features/integrations";
 import {
   DEFAULT_VISIT_PAGE_SIZE,
+  MAX_MAP_CITY_MARKERS,
   MAX_VISIT_PAGE_SIZE,
 } from "@/constants/visits";
 import type { CityMarker } from "@/components/map/world-map";
@@ -31,6 +32,9 @@ export type VisitRollupTotals = {
 export type VisitGeoSummary = {
   countryCodes: string[];
   markers: CityMarker[];
+  /** True when city pins were capped for performance */
+  markersTruncated?: boolean;
+  totalCityVisits?: number;
 };
 
 export async function getVisitRollupTotals(userId: string): Promise<VisitRollupTotals> {
@@ -55,28 +59,58 @@ export async function getVisitRollupTotals(userId: string): Promise<VisitRollupT
 
 /** Full map overlays (distinct countries + deduped city pins) — independent of paginated list. */
 export async function getVisitGeoSummary(userId: string): Promise<VisitGeoSummary> {
-  const [countryCodesRows, markerRows] = await Promise.all([
+  const cityWhere = {
+    userId,
+    cityId: { not: null },
+    city: { lat: { not: null }, lng: { not: null } },
+  } as const;
+
+  const [countryCodesRows, cityGroups, totalCityVisits] = await Promise.all([
     prisma.visit.findMany({
       where: { userId, countryId: { not: null } },
       distinct: ["countryId"],
       select: { country: { select: { code: true } } },
     }),
-    prisma.visit.findMany({
-      where: {
-        userId,
-        cityId: { not: null },
-        city: { lat: { not: null }, lng: { not: null } },
-      },
-      select: {
-        country: { select: { name: true } },
-        city: { select: { name: true, lat: true, lng: true } },
-      },
+    prisma.visit.groupBy({
+      by: ["cityId"],
+      where: cityWhere,
+      _max: { visitedAt: true },
+      orderBy: { _max: { visitedAt: "desc" } },
+      take: MAX_MAP_CITY_MARKERS,
     }),
+    prisma.visit.count({ where: cityWhere }),
   ]);
 
   const countryCodes = countryCodesRows
     .map((r) => r.country?.code)
     .filter((c): c is string => Boolean(c));
+
+  const cityIds = cityGroups
+    .map((g) => g.cityId)
+    .filter((id): id is string => id != null);
+
+  const markerRows =
+    cityIds.length > 0
+      ? await prisma.visit.findMany({
+          where: {
+            userId,
+            cityId: { in: cityIds },
+            city: { lat: { not: null }, lng: { not: null } },
+          },
+          distinct: ["cityId"],
+          select: {
+            cityId: true,
+            country: { select: { name: true } },
+            city: { select: { name: true, lat: true, lng: true } },
+          },
+        })
+      : [];
+
+  const orderIndex = new Map(cityIds.map((id, i) => [id, i]));
+  markerRows.sort(
+    (a, b) =>
+      (orderIndex.get(a.cityId!) ?? 999) - (orderIndex.get(b.cityId!) ?? 999)
+  );
 
   const seen = new Set<string>();
   const markers: CityMarker[] = [];
@@ -93,7 +127,12 @@ export async function getVisitGeoSummary(userId: string): Promise<VisitGeoSummar
     });
   }
 
-  return { countryCodes, markers };
+  return {
+    countryCodes,
+    markers,
+    markersTruncated: cityGroups.length >= MAX_MAP_CITY_MARKERS,
+    totalCityVisits,
+  };
 }
 
 export async function findVisitsPage(
