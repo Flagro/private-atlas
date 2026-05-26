@@ -9,6 +9,7 @@ import type { VisitGeoSummary, VisitRollupTotals } from "@/features/visits";
 import type { CountryStat } from "@/components/map/world-map";
 import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { MapGeoNotice } from "@/components/map/map-geo-notice";
 import { fetchVisitsList, refetchVisitAggregates } from "../visit-queries";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -116,14 +117,17 @@ export function MapView({
         </p>
       </header>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-lg shadow-zinc-900/5 ring-1 ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20 dark:ring-white/5">
-        <WorldMap
-          visitedCodes={visitedCodes}
-          countryStats={countryStatsLocal}
-          cityMarkers={geo.markers}
-          highlightCode={highlightCode ?? undefined}
-          onCountryClick={setHighlightCode}
-        />
+      <div className="space-y-2">
+        <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-lg shadow-zinc-900/5 ring-1 ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20 dark:ring-white/5">
+          <WorldMap
+            visitedCodes={visitedCodes}
+            countryStats={countryStatsLocal}
+            cityMarkers={geo.markers}
+            highlightCode={highlightCode ?? undefined}
+            onCountryClick={setHighlightCode}
+          />
+        </div>
+        <MapGeoNotice markersTruncated={geo.markersTruncated} />
       </div>
 
       {highlightedCountry && (
