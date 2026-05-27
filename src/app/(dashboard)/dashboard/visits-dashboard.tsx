@@ -20,6 +20,7 @@ import { AddVisitDialog } from "./add-visit-dialog";
 import { EditVisitDialog } from "./edit-visit-dialog";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
+import { MapGeoNotice } from "@/components/map/map-geo-notice";
 import { fallbackMessage } from "@/lib/api-errors";
 import { fetchVisitsList, refetchVisitAggregates } from "./visit-queries";
 
@@ -303,14 +304,17 @@ export function VisitsDashboard({
       {/* Map view */}
       {view === "map" && (
         <div className="mt-4 space-y-4">
-          <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-lg shadow-zinc-900/5 ring-1 ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20 dark:ring-white/5">
-            <WorldMap
-              visitedCodes={visitedCodes}
-              countryStats={countryStats}
-              cityMarkers={cityMarkers}
-              highlightCode={mapFilterCode ?? undefined}
-              onCountryClick={setMapFilterCode}
-            />
+          <div className="space-y-2">
+            <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-lg shadow-zinc-900/5 ring-1 ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20 dark:ring-white/5">
+              <WorldMap
+                visitedCodes={visitedCodes}
+                countryStats={countryStats}
+                cityMarkers={cityMarkers}
+                highlightCode={mapFilterCode ?? undefined}
+                onCountryClick={setMapFilterCode}
+              />
+            </div>
+            <MapGeoNotice markersTruncated={geo.markersTruncated} />
           </div>
 
           {mapFilterCode && (
