@@ -5,7 +5,7 @@ export default async function HomePage() {
   const session = await auth();
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-zinc-50 via-white to-teal-50/30 px-4 dark:from-zinc-950 dark:via-zinc-900 dark:to-teal-950/20">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-b from-zinc-50 via-white to-teal-50/30 px-4 dark:from-zinc-950 dark:via-zinc-900 dark:to-teal-950/20">
       <div
         className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-teal-400/25 blur-3xl dark:bg-teal-600/15"
         aria-hidden
@@ -18,7 +18,7 @@ export default async function HomePage() {
       <main
         id="main-content"
         tabIndex={-1}
-        className="relative flex max-w-2xl flex-col items-center gap-10 text-center outline-none"
+        className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-10 py-16 text-center outline-none"
       >
         <div className="space-y-4">
           <p className="text-5xl drop-shadow-sm" aria-hidden>
@@ -59,6 +59,25 @@ export default async function HomePage() {
           )}
         </div>
       </main>
+
+      <footer className="relative border-t border-zinc-200/80 py-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <Link
+            href="/privacy"
+            className="font-medium text-zinc-600 transition hover:text-teal-700 dark:text-zinc-300 dark:hover:text-teal-400"
+          >
+            Privacy
+          </Link>
+          {session?.user ? (
+            <Link
+              href="/dashboard/settings"
+              className="font-medium text-zinc-600 transition hover:text-teal-700 dark:text-zinc-300 dark:hover:text-teal-400"
+            >
+              Settings
+            </Link>
+          ) : null}
+        </nav>
+      </footer>
     </div>
   );
 }
