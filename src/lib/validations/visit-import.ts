@@ -98,5 +98,8 @@ export const visitImportFileSchema = z
   })
   .strip();
 
+export const importMergeModeSchema = z.enum(["add", "replace"]);
+
 export type VisitImportRow = z.infer<typeof visitImportRowSchema>;
 export type VisitImportFile = z.infer<typeof visitImportFileSchema>;
+export type ImportMergeMode = z.infer<typeof importMergeModeSchema>;
