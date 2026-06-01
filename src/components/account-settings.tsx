@@ -10,11 +10,16 @@ import {
 } from "@/lib/api-errors";
 import { useToast } from "@/components/providers/toast-provider";
 
+type ImportMergeMode = "add" | "replace";
+
 type ImportResult = {
   dryRun: boolean;
+  mergeMode: ImportMergeMode;
   totalRows: number;
   created: number;
   skipped: number;
+  duplicatesSkipped: number;
+  existingVisitsDeleted?: number;
   issues: { index: number; message: string }[];
   preview?: {
     index: number;
@@ -22,10 +27,17 @@ type ImportResult = {
     countryCode: string | null;
     cityName: string | null;
     notes: string | null;
+    status?: string;
   }[];
 };
 
-export function AccountSettings({ email }: { email: string }) {
+export function AccountSettings({
+  email,
+  hasPassword,
+}: {
+  email: string;
+  hasPassword: boolean;
+}) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,6 +46,13 @@ export function AccountSettings({ email }: { email: string }) {
   const [importPreview, setImportPreview] = useState<ImportResult | null>(null);
   const [importing, setImporting] = useState(false);
   const [dryRunLoading, setDryRunLoading] = useState(false);
+  const [mergeMode, setMergeMode] = useState<ImportMergeMode>("add");
+  const [replaceAcknowledged, setReplaceAcknowledged] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
@@ -90,7 +109,7 @@ export function AccountSettings({ email }: { email: string }) {
     try {
       const text = await importFile.text();
       const res = await fetch(
-        `/api/visits/import?dryRun=${dryRun ? "1" : "0"}`,
+        `/api/visits/import?dryRun=${dryRun ? "1" : "0"}&mergeMode=${mergeMode}`,
         {
           method: "POST",
           credentials: "include",
@@ -109,31 +128,77 @@ export function AccountSettings({ email }: { email: string }) {
       const result = body as ImportResult;
       if (dryRun) {
         setImportPreview(result);
-        const ok = result.totalRows - result.skipped;
+        const ready =
+          result.preview?.filter((p) => p.status === "ready").length ??
+          result.totalRows - result.skipped;
+        const dupMsg =
+          result.duplicatesSkipped > 0
+            ? ` ${result.duplicatesSkipped} duplicate${result.duplicatesSkipped === 1 ? "" : "s"} skipped.`
+            : "";
+        const replaceMsg =
+          result.mergeMode === "replace" && result.existingVisitsDeleted != null
+            ? ` Would remove ${result.existingVisitsDeleted} existing visit${result.existingVisitsDeleted === 1 ? "" : "s"} first.`
+            : "";
         toast(
-          ok > 0
-            ? `Preview: ${ok} visit${ok === 1 ? "" : "s"} ready to import.`
-            : "Preview: no visits passed validation.",
-          ok > 0 ? "success" : "error"
+          ready > 0
+            ? `Preview: ${ready} visit${ready === 1 ? "" : "s"} ready.${dupMsg}${replaceMsg}`
+            : `Preview: nothing to import.${dupMsg}`,
+          ready > 0 ? "success" : "error"
         );
       } else {
         setImportPreview(null);
         setImportFile(null);
+        setReplaceAcknowledged(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
-        toast(
-          `Imported ${result.created} visit${result.created === 1 ? "" : "s"}.`,
-          result.created > 0 ? "success" : "error"
-        );
+        const parts = [`Imported ${result.created} visit${result.created === 1 ? "" : "s"}.`];
+        if (result.duplicatesSkipped > 0) {
+          parts.push(`${result.duplicatesSkipped} duplicate${result.duplicatesSkipped === 1 ? "" : "s"} skipped.`);
+        }
+        if (result.existingVisitsDeleted != null && result.existingVisitsDeleted > 0) {
+          parts.push(`Removed ${result.existingVisitsDeleted} previous visit${result.existingVisitsDeleted === 1 ? "" : "s"}.`);
+        }
+        toast(parts.join(" "), result.created > 0 ? "success" : "error");
         if (result.issues.length > 0) {
-          setError(
-            `${result.issues.length} row${result.issues.length === 1 ? "" : "s"} skipped — see details below.`
-          );
+          setError("Some rows were skipped — see details below.");
           setImportPreview(result);
         }
       }
     } finally {
       if (dryRun) setDryRunLoading(false);
       else setImporting(false);
+    }
+  }
+
+  async function changePassword() {
+    setError(null);
+    if (newPassword !== confirmPassword) {
+      setError("New passwords do not match.");
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const res = await fetch("/api/user/password", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(
+          `${fallbackMessage(body, "Could not update password.")}${correlationSuffixFromApiBody(body)}`
+        );
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast("Password updated.", "success");
+    } finally {
+      setPasswordLoading(false);
     }
   }
 
@@ -172,6 +237,73 @@ export function AccountSettings({ email }: { email: string }) {
         </p>
       </header>
 
+      {hasPassword ? (
+        <section className="rounded-2xl border border-zinc-200/80 bg-white/80 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Password
+          </h2>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Update the password you use to sign in with email.
+          </p>
+          <div className="mt-4 max-w-md space-y-3">
+            <label className="block text-sm text-zinc-700 dark:text-zinc-300">
+              Current password
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+                className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+            <label className="block text-sm text-zinc-700 dark:text-zinc-300">
+              New password
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+                className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+            <label className="block text-sm text-zinc-700 dark:text-zinc-300">
+              Confirm new password
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+                className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+            <Button
+              type="button"
+              variant="accent"
+              loading={passwordLoading}
+              disabled={!currentPassword || !newPassword || !confirmPassword}
+              onClick={() => void changePassword()}
+            >
+              Update password
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-zinc-200/80 bg-white/80 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Password
+          </h2>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            You sign in with Google. To add a password for email sign-in, use{" "}
+            <Link href="/forgot-password" className="font-medium text-teal-700 dark:text-teal-400">
+              forgot password
+            </Link>{" "}
+            with your account email (development shows the reset link on screen).
+          </p>
+        </section>
+      )}
+
       <section className="rounded-2xl border border-zinc-200/80 bg-white/80 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Data export
@@ -205,8 +337,53 @@ export function AccountSettings({ email }: { email: string }) {
         </h2>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
           Restore from a <span className="font-medium">JSON export</span> from this app. Preview
-          first, then import. Only known country codes and catalog cities are accepted.
+          first, then import. Duplicates (same country, city, and date) are skipped in add mode.
         </p>
+        <fieldset className="mt-4 space-y-2">
+          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Import mode
+          </legend>
+          <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <input
+              type="radio"
+              name="mergeMode"
+              checked={mergeMode === "add"}
+              onChange={() => {
+                setMergeMode("add");
+                setReplaceAcknowledged(false);
+              }}
+              className="mt-1"
+            />
+            <span>
+              <span className="font-medium text-zinc-800 dark:text-zinc-200">Add only</span> — keep
+              existing visits; skip duplicates.
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <input
+              type="radio"
+              name="mergeMode"
+              checked={mergeMode === "replace"}
+              onChange={() => setMergeMode("replace")}
+              className="mt-1"
+            />
+            <span>
+              <span className="font-medium text-zinc-800 dark:text-zinc-200">Replace all</span> —
+              delete every visit, then import the file.
+            </span>
+          </label>
+        </fieldset>
+        {mergeMode === "replace" ? (
+          <label className="mt-3 flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
+            <input
+              type="checkbox"
+              checked={replaceAcknowledged}
+              onChange={(e) => setReplaceAcknowledged(e.target.checked)}
+              className="mt-1"
+            />
+            I understand this will remove all my current visits before importing.
+          </label>
+        ) : null}
         <div className="mt-4 space-y-3">
           <input
             ref={fileInputRef}
@@ -232,7 +409,11 @@ export function AccountSettings({ email }: { email: string }) {
               type="button"
               variant="accent"
               loading={importing}
-              disabled={!importFile || dryRunLoading}
+              disabled={
+                !importFile ||
+                dryRunLoading ||
+                (mergeMode === "replace" && !replaceAcknowledged)
+              }
               onClick={() => void runImport(false)}
             >
               Import visits
