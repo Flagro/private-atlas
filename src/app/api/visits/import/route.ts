@@ -5,7 +5,10 @@ import {
   problemResponse,
   problemUnexpected,
 } from "@/lib/api-errors";
-import { visitImportFileSchema } from "@/lib/validations/visit-import";
+import {
+  importMergeModeSchema,
+  visitImportFileSchema,
+} from "@/lib/validations/visit-import";
 import { importVisitsForUser } from "@/features/visits/import-visits";
 import { MAX_IMPORT_BODY_BYTES, MAX_IMPORT_VISITS } from "@/constants/visits";
 
@@ -80,8 +83,21 @@ export async function POST(request: Request) {
     const dryRun =
       searchParams.get("dryRun") === "1" || searchParams.get("dryRun") === "true";
 
+    const mergeParam = searchParams.get("mergeMode") ?? "add";
+    const mergeParsed = importMergeModeSchema.safeParse(mergeParam);
+    if (!mergeParsed.success) {
+      return problemResponse(
+        {
+          message: 'Query parameter mergeMode must be "add" or "replace".',
+          code: ApiErrorCode.VALIDATION_FAILED,
+        },
+        400
+      );
+    }
+
     const result = await importVisitsForUser(auth.user.id, validated.data.visits, {
       dryRun,
+      mergeMode: mergeParsed.data,
     });
 
     return NextResponse.json(result);
