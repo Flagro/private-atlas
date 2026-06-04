@@ -14,6 +14,8 @@ import type {
   VisitGeoSummary,
   VisitRollupTotals,
 } from "@/features/visits";
+import type { VisitInsights } from "@/features/visits/insights";
+import { VisitInsightsPanel } from "@/components/dashboard/visit-insights-panel";
 import type { CountryStat } from "@/components/map/world-map";
 import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
 import { AddVisitDialog } from "./add-visit-dialog";
@@ -37,6 +39,7 @@ interface VisitsDashboardProps {
   initialMeta: VisitsMeta;
   initialTotals: VisitRollupTotals;
   initialGeo: VisitGeoSummary;
+  initialInsights: VisitInsights;
   countries: CountryOption[];
   countryStats: CountryStat[];
 }
@@ -47,6 +50,7 @@ export function VisitsDashboard({
   initialMeta,
   initialTotals,
   initialGeo,
+  initialInsights,
   countries: countriesInitial,
   countryStats: initialStats,
 }: VisitsDashboardProps) {
@@ -54,6 +58,7 @@ export function VisitsDashboard({
   const [visitsMeta, setVisitsMeta] = useState<VisitsMeta>(initialMeta);
   const [rollup, setRollup] = useState<VisitRollupTotals>(initialTotals);
   const [geo, setGeo] = useState<VisitGeoSummary>(initialGeo);
+  const [insights, setInsights] = useState<VisitInsights>(initialInsights);
   const [countriesCatalog, setCountriesCatalog] =
     useState<CountryOption[]>(countriesInitial);
 
@@ -130,10 +135,16 @@ export function VisitsDashboard({
       return;
     }
 
-    const { totals, geo: geoNext, countryStats: statsNext, countries: cNext } =
-      agg.snapshot;
+    const {
+      totals,
+      geo: geoNext,
+      insights: insightsNext,
+      countryStats: statsNext,
+      countries: cNext,
+    } = agg.snapshot;
     setRollup(totals);
     setGeo(geoNext);
+    setInsights(insightsNext);
     setCountryStats(statsNext);
     setCountriesCatalog(cNext);
 
@@ -259,6 +270,8 @@ export function VisitsDashboard({
         <StatCard value={rollup.citiesVisited} label="Cities" tone="sky" />
         <StatCard value={rollup.visitsCount} label="Visits" tone="violet" />
       </div>
+
+      {rollup.visitsCount > 0 ? <VisitInsightsPanel insights={insights} /> : null}
 
       {/* View toggle */}
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
