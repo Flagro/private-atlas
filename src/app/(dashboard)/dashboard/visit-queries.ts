@@ -1,5 +1,6 @@
 import type { VisitWithRelations } from "@/types";
 import type { VisitRollupTotals, VisitGeoSummary } from "@/features/visits";
+import type { VisitInsights } from "@/features/visits/insights";
 import type { VisitsListPayload } from "@/types/visits";
 import type { CountryOption } from "@/types";
 import type { CountryStat } from "@/components/map/world-map";
@@ -76,9 +77,22 @@ export async function fetchVisitsList(opts: {
 export type AggregateSnapshot = {
   totals: VisitRollupTotals;
   geo: VisitGeoSummary;
+  insights: VisitInsights;
   countryStats: CountryStat[];
   countries: CountryOption[];
 };
+
+function isVisitInsights(x: unknown): x is VisitInsights {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.currentYear === "number" &&
+    typeof o.visitsThisYear === "number" &&
+    typeof o.visitStreakMonths === "number" &&
+    Array.isArray(o.visitsByYear) &&
+    Array.isArray(o.newCountriesThisYear)
+  );
+}
 
 async function parseJsonSafe(res: Response) {
   return res.json().catch(() => null);
@@ -110,6 +124,7 @@ export async function refetchVisitAggregates(): Promise<
       !statsRes.ok ||
       !cRes.ok ||
       !isRollupTotals(ovBody?.totals) ||
+      !isVisitInsights(ovBody?.insights) ||
       !Array.isArray(ovBody.geo?.countryCodes) ||
       !Array.isArray(ovBody.geo?.markers) ||
       !Array.isArray(statsBody) ||
@@ -126,6 +141,7 @@ export async function refetchVisitAggregates(): Promise<
       snapshot: {
         totals: ovBody.totals,
         geo: ovBody.geo as VisitGeoSummary,
+        insights: ovBody.insights,
         countryStats: statsBody as CountryStat[],
         countries: countriesBody as CountryOption[],
       },
