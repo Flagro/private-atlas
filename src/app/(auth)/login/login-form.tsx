@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signIn } from "@/auth";
 import { OAuthButtons, AuthDivider } from "@/components/auth/oauth-buttons";
 import { LoginCredentialFields } from "./login-credential-fields";
@@ -5,6 +6,7 @@ import { LoginSubmitButton } from "./submit-button";
 
 interface LoginFormProps {
   showRegisteredMessage?: boolean;
+  showPasswordResetMessage?: boolean;
   hasError?: boolean;
   hasOAuthError?: boolean;
   /** Sanitized path after sign-in (see `sanitizePostLoginRedirect`). */
@@ -13,6 +15,7 @@ interface LoginFormProps {
 
 export function LoginForm({
   showRegisteredMessage,
+  showPasswordResetMessage,
   hasError,
   hasOAuthError,
   redirectTo = "/dashboard",
@@ -29,6 +32,15 @@ export function LoginForm({
           className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-400"
         >
           Account created! Sign in to continue.
+        </div>
+      )}
+
+      {showPasswordResetMessage && (
+        <div
+          role="status"
+          className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-900/20 dark:text-green-400"
+        >
+          Password updated. Sign in with your new password.
         </div>
       )}
 
@@ -62,6 +74,14 @@ export function LoginForm({
         }}
       >
         <LoginCredentialFields />
+        <p className="text-right text-sm">
+          <Link
+            href="/forgot-password"
+            className="font-medium text-teal-700 hover:underline dark:text-teal-400"
+          >
+            Forgot password?
+          </Link>
+        </p>
         <LoginSubmitButton />
       </form>
     </div>
