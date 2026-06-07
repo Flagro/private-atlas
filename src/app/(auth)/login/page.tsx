@@ -12,12 +12,14 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{
     registered?: string;
+    reset?: string;
     error?: string;
     callbackUrl?: string;
   }>;
 }) {
   const params = await searchParams;
   const showRegisteredMessage = params.registered === "1";
+  const showPasswordResetMessage = params.reset === "1";
   const hasError = params.error === "CredentialsSignin";
   const hasOAuthError =
     params.error === "OAuthCallbackError" ||
@@ -52,6 +54,7 @@ export default async function LoginPage({
           <div className="mt-8 space-y-6">
             <LoginForm
               showRegisteredMessage={showRegisteredMessage}
+              showPasswordResetMessage={showPasswordResetMessage}
               hasError={hasError}
               hasOAuthError={hasOAuthError}
               redirectTo={redirectTo}
