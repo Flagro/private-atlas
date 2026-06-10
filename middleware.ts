@@ -10,7 +10,9 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage =
     req.nextUrl.pathname.startsWith("/login") ||
-    req.nextUrl.pathname.startsWith("/register");
+    req.nextUrl.pathname.startsWith("/register") ||
+    req.nextUrl.pathname.startsWith("/forgot-password") ||
+    req.nextUrl.pathname.startsWith("/reset-password");
 
   if (isAuthPage && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
@@ -35,6 +37,8 @@ export const config = {
     "/dashboard/:path*",
     "/login",
     "/register",
+    "/forgot-password",
+    "/reset-password",
     "/api/auth/:path*",
   ],
 };
