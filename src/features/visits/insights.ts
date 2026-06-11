@@ -18,7 +18,7 @@ function monthKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}`;
 }
 
-function computeMonthStreak(visitDates: Date[], now: Date): number {
+export function computeMonthStreak(visitDates: Date[], now: Date): number {
   if (visitDates.length === 0) return 0;
 
   const monthsWithVisits = new Set(visitDates.map(monthKey));
