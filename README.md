@@ -4,7 +4,13 @@ A personal travel tracker for logging places you've visited (countries and citie
 
 ## Development Setup
 
-### 1. Database (PostgreSQL)
+### 1. Install dependencies
+
+```bash
+npm ci
+```
+
+### 2. Database (PostgreSQL)
 
 Copy the example env file and configure:
 
@@ -25,7 +31,13 @@ Then run migrations:
 npm run db:migrate
 ```
 
-### 2. Run the app
+Seed the database with countries and cities:
+
+```bash
+npm run db:seed
+```
+
+### 3. Run the app
 
 ```bash
 npm run dev
@@ -33,16 +45,14 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Then seed the database with countries and cities:
-
-```bash
-npm run db:seed
-```
-
 ### Useful commands
 
 | Command | Description |
 |---------|-------------|
+| `npm run lint` | Run ESLint |
+| `npm run typecheck` | Check TypeScript types |
+| `npm test` | Run unit tests |
+| `npm run check` | Run lint, type-checking, tests, and production build |
 | `npm run db:generate` | Regenerate Prisma client |
 | `npm run db:migrate` | Create and apply migrations (dev) |
 | `npm run db:migrate:deploy` | Apply pending migrations (production) |
@@ -59,3 +69,5 @@ npm run db:seed
 | `AUTH_URL` | Public site URL (e.g. `https://your-domain.com`) — set in production so OAuth callbacks and auth URLs resolve correctly behind proxies or custom hosts |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (optional) |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional) |
+| `DISABLE_SECURITY_CSP` | Set to `1` only to disable the production CSP while debugging |
+| `FORCE_HSTS` | Set to `1` only when production is served exclusively over HTTPS |
