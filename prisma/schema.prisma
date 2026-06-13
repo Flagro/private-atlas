@@ -98,5 +98,8 @@ model Visit {
   @@index([userId])
   @@index([countryId])
   @@index([cityId])
+  @@index([userId, visitedAt])
+  @@index([userId, countryId])
+  @@index([userId, cityId])
   @@map("visits")
 }
