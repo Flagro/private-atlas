@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { MouseEvent } from "react";
 import {
   ComposableMap,
@@ -51,6 +51,24 @@ export function WorldMap({
   onCountryClick,
 }: WorldMapProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [geography, setGeography] = useState<object | null>(null);
+  const [geographyError, setGeographyError] = useState(false);
+  const [geographyAttempt, setGeographyAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(GEO_URL, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Map request failed: ${response.status}`);
+        return response.json() as Promise<object>;
+      })
+      .then(setGeography)
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setGeographyError(true);
+      });
+    return () => controller.abort();
+  }, [geographyAttempt]);
 
   const statsMap = useMemo(
     () => new Map(countryStats.map((s) => [s.code, s])),
@@ -72,6 +90,39 @@ export function WorldMap({
     setTooltip(null);
   }, []);
 
+  if (geographyError) {
+    return (
+      <div
+        role="alert"
+        className="flex h-72 flex-col items-center justify-center gap-3 bg-zinc-50 px-4 text-center dark:bg-zinc-900"
+      >
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          The map could not be loaded.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setGeographyError(false);
+            setGeography(null);
+            setGeographyAttempt((attempt) => attempt + 1);
+          }}
+          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!geography) {
+    return (
+      <div className="flex h-72 flex-col items-center justify-center gap-3 bg-zinc-50 dark:bg-zinc-900">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal-600 border-t-transparent dark:border-teal-400" />
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading map…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full select-none">
       <ComposableMap
@@ -80,7 +131,7 @@ export function WorldMap({
         style={{ height: "auto" }}
       >
         <ZoomableGroup zoom={1} minZoom={1} maxZoom={6}>
-          <Geographies geography={GEO_URL}>
+          <Geographies geography={geography}>
             {({ geographies }: { geographies: GeographyFeature[] }) =>
               geographies.map((geo: GeographyFeature) => {
                 const alpha2 = numericToAlpha2(geo.id as number);
