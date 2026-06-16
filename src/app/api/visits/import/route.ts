@@ -11,10 +11,11 @@ import {
 } from "@/lib/validations/visit-import";
 import { importVisitsForUser } from "@/features/visits/import-visits";
 import { MAX_IMPORT_BODY_BYTES, MAX_IMPORT_VISITS } from "@/constants/visits";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function postImport(request: Request) {
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
@@ -105,3 +106,5 @@ export async function POST(request: Request) {
     return problemUnexpected(err, "POST /api/visits/import");
   }
 }
+
+export const POST = withApiLogging("POST /api/visits/import", postImport);
