@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { ApiErrorCode, problemUnexpected } from "@/lib/api-errors";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ function csvEscape(value: string | null | undefined): string {
   return s;
 }
 
-export async function GET(request: Request) {
+async function getExport(request: Request) {
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
@@ -107,3 +108,5 @@ export async function GET(request: Request) {
     return problemUnexpected(err, "GET /api/visits/export");
   }
 }
+
+export const GET = withApiLogging("GET /api/visits/export", getExport);
