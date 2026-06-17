@@ -13,8 +13,9 @@ import {
 } from "@/lib/api-errors";
 import { DEFAULT_VISIT_PAGE_SIZE, MAX_VISIT_PAGE_SIZE } from "@/constants/visits";
 import { mapVisitDates } from "@/lib/serialize-visit";
+import { withApiLogging } from "@/lib/logger";
 
-export async function GET(request: Request) {
+async function getVisits(request: Request) {
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function postVisit(request: Request) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
@@ -90,3 +91,6 @@ export async function POST(request: Request) {
     return problemUnexpected(err, "POST /api/visits");
   }
 }
+
+export const GET = withApiLogging("GET /api/visits", getVisits);
+export const POST = withApiLogging("POST /api/visits", postVisit);
