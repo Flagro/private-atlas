@@ -12,8 +12,9 @@ import {
   problemUnexpected,
 } from "@/lib/api-errors";
 import { mapVisitDates } from "@/lib/serialize-visit";
+import { withApiLogging } from "@/lib/logger";
 
-export async function PATCH(
+async function patchVisit(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -61,7 +62,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function deleteVisitRoute(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -83,3 +84,6 @@ export async function DELETE(
     return problemUnexpected(err, "DELETE /api/visits/[id]");
   }
 }
+
+export const PATCH = withApiLogging("PATCH /api/visits/[id]", patchVisit);
+export const DELETE = withApiLogging("DELETE /api/visits/[id]", deleteVisitRoute);
