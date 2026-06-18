@@ -8,10 +8,11 @@ import {
   problemResponse,
   problemUnexpected,
 } from "@/lib/api-errors";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: Request) {
+async function patchPassword(request: Request) {
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
@@ -80,3 +81,5 @@ export async function PATCH(request: Request) {
     return problemUnexpected(err, "PATCH /api/user/password");
   }
 }
+
+export const PATCH = withApiLogging("PATCH /api/user/password", patchPassword);
