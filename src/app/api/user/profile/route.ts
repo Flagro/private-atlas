@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { problemUnexpected } from "@/lib/api-errors";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function getProfile(_request: Request) {
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
@@ -27,3 +28,5 @@ export async function GET() {
     return problemUnexpected(err, "GET /api/user/profile");
   }
 }
+
+export const GET = withApiLogging("GET /api/user/profile", getProfile);
