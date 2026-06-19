@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { getCountryStats } from "@/features/places";
+import { withApiLogging } from "@/lib/logger";
 
-export async function GET() {
+async function getStats(_request: Request) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
   const stats = await getCountryStats(auth.user.id);
   return NextResponse.json(stats);
 }
+
+export const GET = withApiLogging("GET /api/places/countries/stats", getStats);
