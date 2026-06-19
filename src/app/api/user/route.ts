@@ -7,6 +7,7 @@ import {
   problemUnexpected,
 } from "@/lib/api-errors";
 import { deleteAccountSchema } from "@/lib/validations/user";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ function normalizeEmail(email: string): string {
  * Permanently deletes the signed-in user and all related data (visits, OAuth links).
  * Prisma cascades on User delete. Requires confirmEmail matching the session email.
  */
-export async function DELETE(request: Request) {
+async function deleteUser(request: Request) {
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
@@ -66,3 +67,5 @@ export async function DELETE(request: Request) {
     return problemUnexpected(err, "DELETE /api/user");
   }
 }
+
+export const DELETE = withApiLogging("DELETE /api/user", deleteUser);
