@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { getCitiesByCountry } from "@/features/places";
 import { ApiErrorCode, problemResponse } from "@/lib/api-errors";
+import { withApiLogging } from "@/lib/logger";
 
-export async function GET(request: Request) {
+async function getCities(request: Request) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
@@ -22,3 +23,5 @@ export async function GET(request: Request) {
   const cities = await getCitiesByCountry(countryId);
   return NextResponse.json(cities);
 }
+
+export const GET = withApiLogging("GET /api/places/cities", getCities);
