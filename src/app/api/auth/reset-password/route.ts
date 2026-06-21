@@ -8,10 +8,11 @@ import {
   problemResponse,
   problemUnexpected,
 } from "@/lib/api-errors";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function postResetPassword(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     if (!body) {
@@ -67,3 +68,8 @@ export async function POST(request: Request) {
     return problemUnexpected(err, "POST /api/auth/reset-password");
   }
 }
+
+export const POST = withApiLogging(
+  "POST /api/auth/reset-password",
+  postResetPassword
+);
