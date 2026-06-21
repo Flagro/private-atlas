@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
  * Liveness / readiness for load balancers and PaaS.
  * GET — pings the database; returns 503 if the DB is unreachable.
  */
-export async function GET() {
+async function getHealth(_request: Request) {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({
@@ -27,3 +28,5 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withApiLogging("GET /api/health", getHealth);
