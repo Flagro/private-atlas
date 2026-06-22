@@ -8,8 +8,9 @@ import {
   problemResponse,
   problemUnexpected,
 } from "@/lib/api-errors";
+import { withApiLogging } from "@/lib/logger";
 
-export async function POST(request: Request) {
+async function postRegister(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     if (!body) {
@@ -79,3 +80,5 @@ export async function POST(request: Request) {
     return problemUnexpected(error, "POST /api/auth/register");
   }
 }
+
+export const POST = withApiLogging("POST /api/auth/register", postRegister);
