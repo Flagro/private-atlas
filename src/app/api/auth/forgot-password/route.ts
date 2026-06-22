@@ -10,13 +10,14 @@ import {
   buildResetPasswordUrl,
   createPasswordResetToken,
 } from "@/lib/password-reset";
+import { withApiLogging } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 const GENERIC_MESSAGE =
   "If an account with that email exists and uses a password, you will receive reset instructions.";
 
-export async function POST(request: Request) {
+async function postForgotPassword(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     if (!body) {
@@ -76,3 +77,8 @@ export async function POST(request: Request) {
     return problemUnexpected(err, "POST /api/auth/forgot-password");
   }
 }
+
+export const POST = withApiLogging(
+  "POST /api/auth/forgot-password",
+  postForgotPassword
+);
