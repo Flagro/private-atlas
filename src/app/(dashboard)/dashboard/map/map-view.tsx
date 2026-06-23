@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import type { CountryOption, VisitWithRelations } from "@/types";
 import type { VisitsMeta } from "@/types/visits";
 import type { VisitGeoSummary, VisitRollupTotals } from "@/features/visits";
@@ -11,7 +11,7 @@ import { countryCodeToFlag, formatVisitDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MapGeoNotice } from "@/components/map/map-geo-notice";
 import { fetchVisitsList, refetchVisitAggregates } from "../visit-queries";
-import { useToast } from "@/components/providers/toast-provider";
+import { DashboardError } from "../visit-dashboard-components";
 
 const WorldMap = dynamic(
   () => import("@/components/map/world-map").then((m) => m.WorldMap),
@@ -48,8 +48,8 @@ export function MapView({
 
   const [highlightCode, setHighlightCode] = useState<string | null>(null);
   const [listLoadingMore, setListLoadingMore] = useState(false);
-
-  const { toast } = useToast();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const retryRef = useRef<() => Promise<void>>(async () => {});
 
   const visitedCodes = useMemo(
     () => new Set(geo.countryCodes),
@@ -64,10 +64,15 @@ export function MapView({
     ? countriesCatalog.find((c) => c.code === highlightCode)
     : null;
 
-  const reloadFromServer = useCallback(async () => {
+  const showError = useCallback((message: string, retry: () => Promise<void>) => {
+    retryRef.current = retry;
+    setErrorMessage(message);
+  }, []);
+
+  const reloadFromServer = useCallback(async function reloadFromServer() {
     const agg = await refetchVisitAggregates();
     if (!agg.ok) {
-      toast(agg.message, "error");
+      showError(agg.message, reloadFromServer);
       return;
     }
     setRollup(agg.snapshot.totals);
@@ -79,14 +84,15 @@ export function MapView({
       limit: visitsPageSize,
     });
     if (!r.ok) {
-      toast(r.message, "error");
+      showError(r.message, reloadFromServer);
       return;
     }
     setVisits(r.data.visits);
     setVisitsMeta(r.data.meta);
-  }, [toast, visitsPageSize]);
+    setErrorMessage(null);
+  }, [showError, visitsPageSize]);
 
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMore = useCallback(async function handleLoadMore() {
     if (!visitsMeta.hasMore || listLoadingMore)
       return;
     setListLoadingMore(true);
@@ -96,14 +102,15 @@ export function MapView({
     });
     setListLoadingMore(false);
     if (!r.ok) {
-      toast(r.message, "error");
+      showError(r.message, handleLoadMore);
       return;
     }
     const seen = new Set(visits.map((v) => v.id));
     const appended = r.data.visits.filter((v) => !seen.has(v.id));
     setVisits((prev) => [...prev, ...appended]);
     setVisitsMeta(r.data.meta);
-  }, [listLoadingMore, toast, visits, visitsMeta.hasMore, visitsMeta.limit]);
+    setErrorMessage(null);
+  }, [listLoadingMore, showError, visits, visitsMeta.hasMore, visitsMeta.limit]);
 
   return (
     <div className="space-y-8">
@@ -116,6 +123,16 @@ export function MapView({
           explore city markers.
         </p>
       </header>
+
+      {errorMessage ? (
+        <DashboardError
+          message={errorMessage}
+          onRetry={() => {
+            setErrorMessage(null);
+            void retryRef.current();
+          }}
+        />
+      ) : null}
 
       <div className="space-y-2">
         <div className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-lg shadow-zinc-900/5 ring-1 ring-zinc-900/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20 dark:ring-white/5">
