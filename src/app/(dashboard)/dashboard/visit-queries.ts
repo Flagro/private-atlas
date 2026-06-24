@@ -47,31 +47,34 @@ export async function fetchVisitsList(opts: {
   limit?: number;
   countryId?: string;
 }) {
-  const q = new URLSearchParams({
-    offset: String(opts.offset),
-  });
-  if (opts.limit != null)
-    q.set("limit", String(opts.limit));
-  if (opts.countryId)
-    q.set("countryId", opts.countryId);
+  try {
+    const q = new URLSearchParams({ offset: String(opts.offset) });
+    if (opts.limit != null) q.set("limit", String(opts.limit));
+    if (opts.countryId) q.set("countryId", opts.countryId);
 
-  const res = await fetch(`/api/visits?${q.toString()}`, {
-    credentials: "include",
-    cache: "no-store",
-  });
-  const body = await res.json().catch(() => null);
-  if (!res.ok) {
-    return { ok: false as const, message: fallbackMessage(body) };
-  }
+    const res = await fetch(`/api/visits?${q.toString()}`, {
+      credentials: "include",
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { ok: false as const, message: fallbackMessage(body) };
+    }
 
-  const data = assertVisitsPayload(body);
-  if (!data) {
+    const data = assertVisitsPayload(body);
+    if (!data) {
+      return {
+        ok: false as const,
+        message: "Invalid response loading visits.",
+      };
+    }
+    return { ok: true as const, data };
+  } catch {
     return {
       ok: false as const,
-      message: "Invalid response loading visits.",
+      message: "Network error while loading visits.",
     };
   }
-  return { ok: true as const, data };
 }
 
 export type AggregateSnapshot = {
