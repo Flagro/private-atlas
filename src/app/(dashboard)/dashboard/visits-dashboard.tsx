@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useState,
-  useMemo,
-  useEffect,
-  useCallback,
-} from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { CountryOption, VisitWithRelations } from "@/types";
 import type { VisitsMeta } from "@/types/visits";
@@ -19,12 +14,10 @@ import type { CountryStat } from "@/components/map/world-map";
 import { countryCodeToFlag } from "@/lib/utils";
 import { AddVisitDialog } from "./add-visit-dialog";
 import { EditVisitDialog } from "./edit-visit-dialog";
-import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { MapGeoNotice } from "@/components/map/map-geo-notice";
-import { fallbackMessage } from "@/lib/api-errors";
-import { fetchVisitsList, refetchVisitAggregates } from "./visit-queries";
 import {
+  DashboardError,
   EmptyState,
   ListIcon,
   MapIcon,
@@ -33,13 +26,12 @@ import {
   ToggleButton,
   VisitCard,
 } from "./visit-dashboard-components";
+import { useVisitsDashboard } from "./use-visits-dashboard";
 
 const WorldMap = dynamic(
   () => import("@/components/map/world-map").then((m) => m.WorldMap),
   { ssr: false, loading: () => <MapSkeleton /> }
 );
-
-type View = "list" | "map";
 
 interface VisitsDashboardProps {
   initialVisits: VisitWithRelations[];
@@ -62,146 +54,44 @@ export function VisitsDashboard({
   countries: countriesInitial,
   countryStats: initialStats,
 }: VisitsDashboardProps) {
-  const [visits, setVisits] = useState<VisitWithRelations[]>(initialVisits);
-  const [visitsMeta, setVisitsMeta] = useState<VisitsMeta>(initialMeta);
-  const [rollup, setRollup] = useState<VisitRollupTotals>(initialTotals);
-  const [geo, setGeo] = useState<VisitGeoSummary>(initialGeo);
-  const [insights, setInsights] = useState<VisitInsights>(initialInsights);
-  const [countriesCatalog, setCountriesCatalog] =
-    useState<CountryOption[]>(countriesInitial);
-
-  const [filterCountryId, setFilterCountryId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [editingVisit, setEditingVisit] =
     useState<VisitWithRelations | null>(null);
-  const [view, setView] = useState<View>(() => {
-    if (typeof window === "undefined") return "list";
-    const saved = localStorage.getItem("atlas-view");
-    return saved === "map" || saved === "list" ? saved : "list";
+  const dashboard = useVisitsDashboard({
+    visits: initialVisits,
+    visitsPageSize,
+    meta: initialMeta,
+    totals: initialTotals,
+    geo: initialGeo,
+    insights: initialInsights,
+    countries: countriesInitial,
+    countryStats: initialStats,
   });
-  const [mapFilterCode, setMapFilterCode] = useState<string | null>(null);
-  const [countryStats, setCountryStats] =
-    useState<CountryStat[]>(initialStats);
-
-  const [filterListLoading, setFilterListLoading] = useState(false);
-  const [listLoadingMore, setListLoadingMore] = useState(false);
-
-  const { toast } = useToast();
-
-  useEffect(() => {
-    localStorage.setItem("atlas-view", view);
-  }, [view]);
-
-  const visitedCountryOptions = useMemo(
-    () => countriesCatalog.filter((c) => c.visited),
-    [countriesCatalog]
-  );
-
-  const effectiveFilterId =
-    filterCountryId &&
-    visitedCountryOptions.some((c) => c.id === filterCountryId)
-      ? filterCountryId
-      : "";
-
-  const resolveCountryQueryId = useCallback(() => effectiveFilterId, [effectiveFilterId]);
-
-  const reloadVisitsReplace = useCallback(
-    async (countryIdOpt?: string) => {
-      setFilterListLoading(true);
-      const r = await fetchVisitsList({
-        offset: 0,
-        limit: visitsPageSize,
-        countryId: countryIdOpt,
-      });
-      setFilterListLoading(false);
-      if (!r.ok) {
-        toast(r.message, "error");
-        return false;
-      }
-      setVisits(r.data.visits);
-      setVisitsMeta(r.data.meta);
-      return true;
-    },
-    [toast, visitsPageSize]
-  );
-
-  const applyCountryFilter = useCallback(
-    async (raw: string) => {
-      setFilterCountryId(raw);
-      const next =
-        raw && visitedCountryOptions.some((c) => c.id === raw) ? raw : undefined;
-      await reloadVisitsReplace(next);
-    },
-    [reloadVisitsReplace, visitedCountryOptions]
-  );
-
-  const afterVisitMutation = useCallback(async () => {
-    const agg = await refetchVisitAggregates();
-    if (!agg.ok) {
-      toast(agg.message, "error");
-      return;
-    }
-
-    const {
-      totals,
-      geo: geoNext,
-      insights: insightsNext,
-      countryStats: statsNext,
-      countries: cNext,
-    } = agg.snapshot;
-    setRollup(totals);
-    setGeo(geoNext);
-    setInsights(insightsNext);
-    setCountryStats(statsNext);
-    setCountriesCatalog(cNext);
-
-    const visitedOpts = cNext.filter((c) => c.visited);
-    const cid =
-      filterCountryId && visitedOpts.some((c) => c.id === filterCountryId)
-        ? filterCountryId
-        : undefined;
-
-    await fetchVisitsList({
-      offset: 0,
-      limit: visitsPageSize,
-      countryId: cid,
-    }).then((r) => {
-      if (r.ok) {
-        setVisits(r.data.visits);
-        setVisitsMeta(r.data.meta);
-      }
-    });
-  }, [filterCountryId, toast, visitsPageSize]);
-
-  const handleLoadMore = useCallback(async () => {
-    if (!visitsMeta.hasMore || listLoadingMore || filterListLoading)
-      return;
-    setListLoadingMore(true);
-    const countryIdOpt = resolveCountryQueryId();
-    const r = await fetchVisitsList({
-      offset: visits.length,
-      limit: visitsMeta.limit,
-      ...(countryIdOpt ? { countryId: countryIdOpt } : {}),
-    });
-    setListLoadingMore(false);
-    if (!r.ok) {
-      toast(r.message, "error");
-      return;
-    }
-    const seen = new Set(visits.map((v) => v.id));
-    const appended = r.data.visits.filter((v) => !seen.has(v.id));
-    setVisits((prev) => [...prev, ...appended]);
-    setVisitsMeta(r.data.meta);
-  }, [
+  const {
+    visits,
+    visitsMeta,
+    rollup,
+    geo,
+    insights,
+    countriesCatalog,
+    countryStats,
+    visitedCountryOptions,
+    effectiveFilterId,
+    view,
+    mapFilterCode,
     filterListLoading,
     listLoadingMore,
-    visits.length,
-    visitsMeta.hasMore,
-    visitsMeta.limit,
-    resolveCountryQueryId,
-    toast,
-  ]);
+    deletingIds,
+    errorMessage,
+    setView,
+    setMapFilterCode,
+    applyCountryFilter,
+    handleLoadMore,
+    handleDelete,
+    afterAdd,
+    afterEdit,
+    retry,
+  } = dashboard;
 
   const visitedCodes = useMemo(() => new Set(geo.countryCodes), [geo.countryCodes]);
   const cityMarkers = geo.markers;
@@ -214,48 +104,6 @@ export function VisitsDashboard({
     ? visitsMeta.total > 0
     : rollup.visitsCount > 0;
 
-  async function handleAdd(_visit: VisitWithRelations) {
-    toast("Visit added!", "success");
-    await afterVisitMutation();
-  }
-
-  async function handleEdit(_updated: VisitWithRelations) {
-    toast("Visit updated!", "success");
-    await afterVisitMutation();
-  }
-
-  async function handleDelete(id: string) {
-    setDeletingIds((prev) => new Set([...prev, id]));
-    let res: Response;
-    try {
-      res = await fetch(`/api/visits/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-    } catch {
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      toast("Network error. Could not delete visit.", "error");
-      return;
-    }
-    setDeletingIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      toast(fallbackMessage(body, "Could not remove visit."), "error");
-      return;
-    }
-
-    await afterVisitMutation();
-  }
-
   return (
     <>
       <header className="mb-8">
@@ -267,6 +115,10 @@ export function VisitsDashboard({
           explore visually.
         </p>
       </header>
+
+      {errorMessage ? (
+        <DashboardError message={errorMessage} onRetry={() => void retry()} />
+      ) : null}
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
@@ -441,14 +293,14 @@ export function VisitsDashboard({
         isOpen={dialogOpen}
         countries={countriesCatalog}
         onClose={() => setDialogOpen(false)}
-        onAdd={handleAdd}
+        onAdd={() => void afterAdd()}
       />
 
       <EditVisitDialog
         visit={editingVisit}
         countries={countriesCatalog}
         onClose={() => setEditingVisit(null)}
-        onEdit={handleEdit}
+        onEdit={() => void afterEdit()}
       />
     </>
   );
