@@ -25,6 +25,9 @@ Start PostgreSQL with Docker:
 docker compose up -d
 ```
 
+The database container includes a readiness check. Confirm it is healthy with
+`docker compose ps` before running migrations.
+
 Then run migrations:
 
 ```bash
@@ -71,3 +74,10 @@ Open [http://localhost:3000](http://localhost:3000).
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional) |
 | `DISABLE_SECURITY_CSP` | Set to `1` only to disable the production CSP while debugging |
 | `FORCE_HSTS` | Set to `1` only when production is served exclusively over HTTPS |
+
+## Request Logging
+
+API routes emit one structured JSON log on completion with a request ID, stable
+route name, method, status, and duration. Query values, request bodies, and user
+data are not logged. The request ID is also returned in the `x-request-id`
+response header.
